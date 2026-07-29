@@ -1,0 +1,54 @@
+plugins {
+    id 'fabric-loom' version "${loom_version}"
+}
+
+version = project.mod_version
+group = project.maven_group
+
+base {
+    archivesName = project.archives_base_name
+}
+
+repositories {
+    maven {
+        name = 'DimasKama'
+        url = uri('https://maven.dimaskama.net/releases')
+    }
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${project.minecraft_version}"
+    mappings loom.officialMojangMappings()
+    modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+    modImplementation "net.dimaskama:mcef-modern:${project.mcef_modern_version}"
+    // Provided at runtime by MCEF Modern's nested jars; needed here for the CEF types it exposes.
+    compileOnly "me.friwi:jcef-api:${project.jcef_api_version}"
+}
+
+processResources {
+    inputs.property 'version', project.version
+    filesMatching('fabric.mod.json') {
+        expand 'version': project.version,
+                'minecraft_version': project.minecraft_version,
+                'loader_version': project.loader_version,
+                'fabric_version': project.fabric_version,
+                'mcef_modern_version': project.mcef_modern_version
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    it.options.release = 21
+}
+
+java {
+    withSourcesJar()
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
+}
+
+jar {
+    from('LICENSE') {
+        rename { "${it}_${project.base.archivesName.get()}" }
+    }
+}
