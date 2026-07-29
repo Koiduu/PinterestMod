@@ -72,7 +72,9 @@ public class PinterestBrowserScreen extends Screen {
             );
             guiGraphics.requestCursor(browser.getCursorType());
         } else {
-            renderBackground(guiGraphics, mouseX, mouseY, partialTick);
+            // Not renderBackground(): the vanilla screen render already blurred this frame,
+            // and blurring twice per frame throws.
+            guiGraphics.fill(0, 0, width, height, 0xC0101010);
             guiGraphics.drawCenteredString(font, statusMessage(), width / 2, height / 2 - 4, 0xFFFFFFFF);
         }
         super.render(guiGraphics, mouseX, mouseY, partialTick);
