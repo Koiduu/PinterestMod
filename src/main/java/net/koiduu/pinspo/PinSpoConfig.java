@@ -28,7 +28,7 @@ public class PinSpoConfig {
     /** Vertical offset from the chosen corner, as a fraction of screen height. */
     public float offsetY = 0.02F;
     /** Overlay width as a fraction of screen width; height follows the image aspect ratio. */
-    public float scale = 0.25F;
+    public float scale = 0.3F;
     public float opacity = 0.85F;
     public boolean preferOriginalResolution = false;
     /** Minutes of the browser being unused before it is disposed; 0 disables idle disposal. */
