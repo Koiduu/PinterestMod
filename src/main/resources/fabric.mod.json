@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "id": "pinspo",
+  "version": "${version}",
+  "name": "PinSpo",
+  "description": "In-game Pinterest reference overlay: browse Pinterest inside Minecraft and pin any image as a picture-in-picture build reference.",
+  "authors": [
+    "Koiduu"
+  ],
+  "contact": {
+    "sources": "https://github.com/Koiduu/PinterestMod"
+  },
+  "license": "MIT",
+  "environment": "client",
+  "entrypoints": {
+    "client": [
+      "net.koiduu.pinspo.PinSpoClient"
+    ]
+  },
+  "depends": {
+    "minecraft": ">=1.21.11",
+    "fabricloader": ">=0.19.3",
+    "fabric-api": ">=0.141.3+1.21.11",
+    "mcef-modern": ">=0.3.3"
+  }
+}
