@@ -140,8 +140,13 @@ public final class PinnedImage {
         PinSpoConfig config = PinSpoConfig.get();
         int screenWidth = guiGraphics.guiWidth();
         int screenHeight = guiGraphics.guiHeight();
-        int width = Math.max(1, Math.round(screenWidth * config.scale));
-        int height = Math.max(1, Math.round(width * (float) imageHeight / imageWidth));
+        // Contain-fit inside a box that is `scale` of both screen dimensions, so the overlay keeps the
+        // same visual size on any window aspect ratio and tall pins never run off-screen.
+        float fit = Math.min(
+                screenWidth * config.scale / imageWidth,
+                screenHeight * config.scale / imageHeight);
+        int width = Math.max(1, Math.round(imageWidth * fit));
+        int height = Math.max(1, Math.round(imageHeight * fit));
         int offsetX = Math.round(screenWidth * config.offsetX);
         int offsetY = Math.round(screenHeight * config.offsetY);
 
