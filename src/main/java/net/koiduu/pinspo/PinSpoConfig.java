@@ -42,8 +42,11 @@ public class PinSpoConfig {
     public float browserWindowScale = 0.7F;
     /** Chromium off-screen frame rate. Lower is cheaper; 60 is smooth. */
     public int browserFrameRate = 60;
-    /** Start Chromium in the background at game launch so the first press of the keybind is instant. */
-    public boolean preloadBrowser = true;
+    /**
+     * Start Chromium in the background at game launch. Off by default now that the native search grid,
+     * not the embedded browser, is the normal way to find a reference.
+     */
+    public boolean preloadBrowser = false;
     /** Minutes of the browser being unused before it is disposed; 0 disables idle disposal. */
     public int idleDisposeMinutes = 5;
 

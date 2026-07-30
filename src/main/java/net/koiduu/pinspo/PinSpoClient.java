@@ -60,7 +60,7 @@ public class PinSpoClient implements ClientModInitializer {
             if (PinnedImage.isPinned()) {
                 client.setScreen(new PinSettingsScreen(null));
             } else {
-                client.setScreen(new PinterestBrowserScreen(null));
+                client.setScreen(new PinBrowseScreen(null));
             }
         }
     }

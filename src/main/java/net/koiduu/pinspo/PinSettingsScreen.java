@@ -83,7 +83,7 @@ public class PinSettingsScreen extends Screen {
 
         addRenderableWidget(Button
                 .builder(Component.translatable("option.pinspo.browse"),
-                        button -> minecraft.setScreen(new PinterestBrowserScreen(parent)))
+                        button -> minecraft.setScreen(new PinBrowseScreen(parent)))
                 .bounds(x, y, WIDGET_WIDTH, WIDGET_HEIGHT)
                 .build());
         y += WIDGET_HEIGHT + SPACING;
