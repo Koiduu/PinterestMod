@@ -45,9 +45,7 @@ public final class ThumbnailCache {
                     IN_FLIGHT.remove(url);
                     if (image == null) {
                         FAILED.add(url);
-                        if (error != null) {
-                            PinSpoClient.LOGGER.debug("Thumbnail download failed for {}", url, error);
-                        }
+                        PinSpoClient.LOGGER.warn("Could not load thumbnail {}", url, error);
                         return;
                     }
                     Identifier id = Identifier.fromNamespaceAndPath(
@@ -69,9 +67,13 @@ public final class ThumbnailCache {
                             .GET()
                             .build(),
                     HttpResponse.BodyHandlers.ofByteArray());
-            return response.statusCode() / 100 == 2 ? NativeImage.read(response.body()) : null;
+            if (response.statusCode() / 100 != 2) {
+                PinSpoClient.LOGGER.warn("Thumbnail {} returned HTTP {}", url, response.statusCode());
+                return null;
+            }
+            return NativeImage.read(response.body());
         } catch (Exception e) {
-            PinSpoClient.LOGGER.debug("Thumbnail download failed for {}: {}", url, e.toString());
+            PinSpoClient.LOGGER.warn("Thumbnail download failed for {}: {}", url, e.toString());
             return null;
         }
     }
