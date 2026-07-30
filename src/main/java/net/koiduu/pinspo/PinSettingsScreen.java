@@ -74,7 +74,7 @@ public class PinSettingsScreen extends Screen {
 
         addRenderableWidget(Button
                 .builder(Component.translatable("option.pinspo.remove_pin"), button -> {
-                    PinnedImage.clear();
+                    PinnedImage.unpin();
                     onClose();
                 })
                 .bounds(x, y, WIDGET_WIDTH, WIDGET_HEIGHT)

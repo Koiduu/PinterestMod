@@ -31,6 +31,8 @@ public class PinSpoConfig {
     public float scale = 0.3F;
     public float opacity = 0.85F;
     public boolean preferOriginalResolution = false;
+    /** Currently pinned image URL; re-pinned from the on-disk cache on startup. */
+    public String pinnedUrl = "";
     /** Minutes of the browser being unused before it is disposed; 0 disables idle disposal. */
     public int idleDisposeMinutes = 5;
 
@@ -71,6 +73,9 @@ public class PinSpoConfig {
     private void clamp() {
         if (corner == null) {
             corner = Corner.TOP_RIGHT;
+        }
+        if (pinnedUrl == null) {
+            pinnedUrl = "";
         }
         offsetX = clamp01(offsetX);
         offsetY = clamp01(offsetY);

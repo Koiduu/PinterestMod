@@ -11,7 +11,8 @@ turn any pin into a persistent picture-in-picture build reference.
 - **Escape** — closes the browser screen without changing the current pin.
 
 Settings (opacity, size, screen corner, offsets, original-resolution preference) are stored in
-`config/pinspo.json`.
+`config/pinspo.json`. The pinned image itself survives restarts too: its bytes are cached under
+`config/pinspo/images` and re-pinned on startup without hitting the network.
 
 ## Requirements
 
