@@ -42,6 +42,7 @@ public class PinSpoClient implements ClientModInitializer {
 
         ClientTickEvents.END_CLIENT_TICK.register(PinSpoClient::onEndTick);
         PinnedImage.restore();
+        PinterestAccount.restore();
 
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> BrowserHolder.dispose());
         ClientLifecycleEvents.CLIENT_STOPPING.register(client -> {

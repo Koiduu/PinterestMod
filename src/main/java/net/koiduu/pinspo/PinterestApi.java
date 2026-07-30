@@ -18,6 +18,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -50,6 +51,48 @@ public final class PinterestApi {
     public record Pin(String id, String title, String thumbnailUrl, String imageUrl, int width, int height) {
     }
 
+    /** Installs the signed-in player's Pinterest cookies so later requests act as that account. */
+    public static void setSessionCookies(Map<String, String> sessionCookies) {
+        client();
+        CookieManager manager = cookies;
+        if (manager == null) {
+            return;
+        }
+        manager.getCookieStore().removeAll();
+        sessionCookies.forEach((name, value) -> {
+            HttpCookie cookie = new HttpCookie(name, value);
+            cookie.setDomain(PinterestAccount.cookieDomain());
+            cookie.setPath("/");
+            cookie.setVersion(0);
+            manager.getCookieStore().add(URI.create("https://www.pinterest.com"), cookie);
+        });
+    }
+
+    /** Returns the signed-in user object, or {@code null} when the session is anonymous or invalid. */
+    @Nullable
+    public static JsonObject currentUser() {
+        try {
+            JsonObject data = new JsonObject();
+            data.add("options", new JsonObject());
+            data.add("context", new JsonObject());
+            URI uri = URI.create("https://www.pinterest.com/resource/UserSessionResource/get/"
+                    + "?source_url=" + encode("/") + "&data=" + encode(data.toString()));
+            HttpResponse<String> response = client().send(
+                    requestBuilder(uri, "/").build(), HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() / 100 != 2) {
+                return null;
+            }
+            JsonElement user = JsonParser.parseString(response.body())
+                    .getAsJsonObject().getAsJsonObject("resource_response").get("data");
+            return user != null && user.isJsonObject() && user.getAsJsonObject().has("username")
+                    ? user.getAsJsonObject()
+                    : null;
+        } catch (Exception e) {
+            PinSpoClient.LOGGER.warn("Could not read the Pinterest user session", e);
+            return null;
+        }
+    }
+
     public static CompletableFuture<Page> search(String query, @Nullable String bookmark) {
         return CompletableFuture.supplyAsync(() -> {
             try {
@@ -79,7 +122,16 @@ public final class PinterestApi {
                 + "?source_url=" + encode(searchPath)
                 + "&data=" + encode(data.toString()));
 
-        HttpRequest request = HttpRequest.newBuilder(uri)
+        HttpResponse<String> response = client().send(
+                requestBuilder(uri, searchPath).build(), HttpResponse.BodyHandlers.ofString());
+        if (response.statusCode() / 100 != 2) {
+            throw new IllegalStateException("Pinterest search returned HTTP " + response.statusCode());
+        }
+        return parse(JsonParser.parseString(response.body()).getAsJsonObject());
+    }
+
+    private static HttpRequest.Builder requestBuilder(URI uri, String sourcePath) throws Exception {
+        return HttpRequest.newBuilder(uri)
                 .timeout(Duration.ofSeconds(15))
                 .header("User-Agent", USER_AGENT)
                 .header("Accept", "application/json, text/javascript, */*, q=0.01")
@@ -87,14 +139,8 @@ public final class PinterestApi {
                 .header("X-CSRFToken", csrfToken())
                 .header("X-Pinterest-AppState", "active")
                 .header("X-Pinterest-PWS-Handler", "www/search/[scope].js")
-                .header("Referer", "https://www.pinterest.com" + searchPath)
-                .GET()
-                .build();
-        HttpResponse<String> response = client().send(request, HttpResponse.BodyHandlers.ofString());
-        if (response.statusCode() / 100 != 2) {
-            throw new IllegalStateException("Pinterest search returned HTTP " + response.statusCode());
-        }
-        return parse(JsonParser.parseString(response.body()).getAsJsonObject());
+                .header("Referer", "https://www.pinterest.com" + sourcePath)
+                .GET();
     }
 
     private static Page parse(JsonObject root) {

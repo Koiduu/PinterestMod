@@ -1,0 +1,154 @@
+package net.koiduu.pinspo;
+
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonObject;
+import net.fabricmc.loader.api.FabricLoader;
+import org.cef.network.CefCookieManager;
+import org.jetbrains.annotations.Nullable;
+
+import java.io.IOException;
+import java.io.Reader;
+import java.io.Writer;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+
+/**
+ * The signed-in Pinterest account. Logging in happens in the embedded browser on pinterest.com itself;
+ * afterwards Chromium's session cookies are copied into {@link PinterestApi} so the native screens act
+ * as that user, and stored so the login survives restarts.
+ */
+public final class PinterestAccount {
+
+    private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
+    private static final Path PATH = FabricLoader.getInstance().getConfigDir().resolve("pinspo-account.json");
+    private static final String COOKIE_DOMAIN = ".pinterest.com";
+    /** The cookies Pinterest's own web app needs to treat a request as signed in. */
+    private static final String[] SESSION_COOKIES = {"_pinterest_sess", "_auth", "_b", "csrftoken", "sessionFunnelEventLogged"};
+
+    private static Map<String, String> cookies = new LinkedHashMap<>();
+    private static String username = "";
+
+    private PinterestAccount() {
+    }
+
+    public static boolean isSignedIn() {
+        return cookies.containsKey("_pinterest_sess") && "1".equals(cookies.get("_auth"));
+    }
+
+    public static String username() {
+        return username;
+    }
+
+    /** Loads the stored session at startup and hands it to {@link PinterestApi}. */
+    public static void restore() {
+        if (!Files.isRegularFile(PATH)) {
+            return;
+        }
+        try (Reader reader = Files.newBufferedReader(PATH, StandardCharsets.UTF_8)) {
+            Stored stored = GSON.fromJson(reader, Stored.class);
+            if (stored != null && stored.cookies != null) {
+                cookies = new LinkedHashMap<>(stored.cookies);
+                username = stored.username == null ? "" : stored.username;
+                PinterestApi.setSessionCookies(cookies);
+            }
+        } catch (Exception e) {
+            PinSpoClient.LOGGER.warn("Could not read the stored Pinterest session", e);
+        }
+    }
+
+    /**
+     * Copies the current Chromium cookies for pinterest.com into the API client. Called after the player
+     * closes the login browser.
+     *
+     * @return the signed-in username once it has been confirmed, or an empty string if not signed in
+     */
+    public static CompletableFuture<String> importFromBrowser() {
+        Map<String, String> collected = new LinkedHashMap<>();
+        try {
+            CefCookieManager.getGlobalManager().visitUrlCookies(
+                    "https://www.pinterest.com/", true,
+                    (cookie, count, total, delete) -> {
+                        for (String wanted : SESSION_COOKIES) {
+                            if (wanted.equals(cookie.name)) {
+                                collected.put(cookie.name, cookie.value);
+                            }
+                        }
+                        return true;
+                    });
+        } catch (Throwable e) {
+            PinSpoClient.LOGGER.warn("Could not read cookies from the embedded browser", e);
+            return CompletableFuture.completedFuture("");
+        }
+        // visitUrlCookies is asynchronous on the CEF IO thread, so give it a moment to deliver.
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                Thread.sleep(700L);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            if (!collected.containsKey("_pinterest_sess")) {
+                return "";
+            }
+            cookies = new LinkedHashMap<>(collected);
+            PinterestApi.setSessionCookies(cookies);
+            username = fetchUsername();
+            save();
+            return username;
+        });
+    }
+
+    public static void signOut() {
+        cookies = new LinkedHashMap<>();
+        username = "";
+        PinterestApi.setSessionCookies(cookies);
+        try {
+            CefCookieManager.getGlobalManager().deleteCookies("https://www.pinterest.com/", "");
+        } catch (Throwable e) {
+            PinSpoClient.LOGGER.debug("Could not clear browser cookies", e);
+        }
+        try {
+            Files.deleteIfExists(PATH);
+        } catch (IOException e) {
+            PinSpoClient.LOGGER.warn("Could not delete the stored Pinterest session", e);
+        }
+    }
+
+    private static String fetchUsername() {
+        JsonObject user = PinterestApi.currentUser();
+        if (user == null) {
+            return "";
+        }
+        String name = user.has("username") ? user.get("username").getAsString() : "";
+        return name.isEmpty() && user.has("full_name") ? user.get("full_name").getAsString() : name;
+    }
+
+    private static void save() {
+        Stored stored = new Stored();
+        stored.cookies = cookies;
+        stored.username = username;
+        try {
+            Files.createDirectories(PATH.getParent());
+            try (Writer writer = Files.newBufferedWriter(PATH, StandardCharsets.UTF_8)) {
+                GSON.toJson(stored, writer);
+            }
+        } catch (IOException e) {
+            PinSpoClient.LOGGER.warn("Could not store the Pinterest session", e);
+        }
+    }
+
+    public static String cookieDomain() {
+        return COOKIE_DOMAIN;
+    }
+
+    private static final class Stored {
+        @Nullable
+        Map<String, String> cookies;
+        @Nullable
+        String username;
+    }
+}

@@ -6,11 +6,16 @@ import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.resources.Identifier;
 import org.jetbrains.annotations.Nullable;
 
+import net.fabricmc.loader.api.FabricLoader;
+
+import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.time.Duration;
 import java.util.HashMap;
@@ -25,6 +30,8 @@ public final class ThumbnailCache {
     private static final Map<String, Thumbnail> TEXTURES = new HashMap<>();
     private static final Set<String> IN_FLIGHT = new HashSet<>();
     private static final Set<String> FAILED = new HashSet<>();
+    private static final Path CACHE_DIR =
+            FabricLoader.getInstance().getConfigDir().resolve("pinspo/thumbnails");
 
     @Nullable
     private static HttpClient httpClient;
@@ -65,6 +72,17 @@ public final class ThumbnailCache {
 
     @Nullable
     private static NativeImage download(String url) {
+        Path cacheFile = CACHE_DIR.resolve(hash(url) + ".img");
+        if (Files.isRegularFile(cacheFile)) {
+            try {
+                return ImageDecoder.decode(Files.readAllBytes(cacheFile));
+            } catch (Exception e) {
+                try {
+                    Files.deleteIfExists(cacheFile);
+                } catch (IOException ignored) {
+                }
+            }
+        }
         try {
             HttpResponse<byte[]> response = client().send(
                     HttpRequest.newBuilder(URI.create(url))
@@ -77,7 +95,14 @@ public final class ThumbnailCache {
                 PinSpoClient.LOGGER.warn("Thumbnail {} returned HTTP {}", url, response.statusCode());
                 return null;
             }
-            return ImageDecoder.decode(response.body());
+            NativeImage image = ImageDecoder.decode(response.body());
+            try {
+                Files.createDirectories(CACHE_DIR);
+                Files.write(cacheFile, response.body());
+            } catch (IOException e) {
+                PinSpoClient.LOGGER.debug("Could not cache thumbnail {}", url, e);
+            }
+            return image;
         } catch (Exception e) {
             PinSpoClient.LOGGER.warn("Thumbnail download failed for {}: {}", url, e.toString());
             return null;

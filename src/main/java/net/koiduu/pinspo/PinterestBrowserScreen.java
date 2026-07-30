@@ -26,9 +26,21 @@ public class PinterestBrowserScreen extends Screen {
     private int panelWidth;
     private int panelHeight;
 
+    /** Set when the browser was opened to log in; closing it then copies the session out of Chromium. */
+    private final boolean importSessionOnClose;
+    @Nullable
+    private final String startUrl;
+
     public PinterestBrowserScreen(@Nullable Screen parent) {
+        this(parent, null, false);
+    }
+
+    public PinterestBrowserScreen(@Nullable Screen parent, @Nullable String startUrl,
+                                  boolean importSessionOnClose) {
         super(Component.translatable("screen.pinspo.browser"));
         this.parent = parent;
+        this.startUrl = startUrl;
+        this.importSessionOnClose = importSessionOnClose;
     }
 
     @Override
@@ -58,6 +70,9 @@ public class PinterestBrowserScreen extends Screen {
         int pixelHeight = Math.max(1, Math.round(panelHeight * (float) pixelWidth / panelWidth));
         if (browser == null) {
             browser = BrowserHolder.browserIfReady(pixelWidth, pixelHeight);
+            if (browser != null && startUrl != null) {
+                browser.getCefBrowser().loadURL(startUrl);
+            }
         }
         if (browser == null) {
             return;
@@ -234,6 +249,9 @@ public class PinterestBrowserScreen extends Screen {
         }
         BrowserHolder.setVisible(false);
         browser = null;
+        if (importSessionOnClose) {
+            PinterestAccount.importFromBrowser();
+        }
     }
 
     @Override
