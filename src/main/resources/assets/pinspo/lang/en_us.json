@@ -22,6 +22,7 @@
   "option.pinspo.corner.bottom_right": "Bottom right",
   "option.pinspo.prefer_original": "Prefer original resolution",
   "option.pinspo.browser_quality": "Browser quality",
+  "option.pinspo.browser_window": "Browser window size: %s",
   "option.pinspo.browse": "Browse Pinterest",
   "option.pinspo.remove_pin": "Remove pin",
   "message.pinspo.pin_failed": "PinSpo: could not download that image.",

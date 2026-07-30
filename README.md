@@ -10,9 +10,11 @@ turn any pin into a persistent picture-in-picture build reference.
 - **Shift + Right-Click** an image — closes the browser and pins that image as an overlay.
 - **Escape** — closes the browser screen without changing the current pin.
 
-Chromium is warmed up in the background at launch (`preloadBrowser`) so the first press of **M** is
-instant, and it renders at a capped resolution (`maxBrowserWidth`, "Browser quality" in the settings
-screen) because off-screen painting cost scales with pixel count — lower it if browsing feels slow.
+The browser opens as a centred window (70% of the screen by default) over a dimmed backdrop; clicking
+the backdrop closes it. Chromium is warmed up in the background at launch (`preloadBrowser`) so the
+first press of **M** is instant, and it renders at a capped resolution (`maxBrowserWidth`, 960 by
+default) because off-screen painting cost scales with pixel count. "Browser window size" and "Browser
+quality" in the settings screen are the two knobs to turn if browsing feels slow.
 
 Settings (opacity, size, screen corner, offsets, original-resolution preference) are stored in
 `config/pinspo.json`. The pinned image itself survives restarts too: its bytes are cached under

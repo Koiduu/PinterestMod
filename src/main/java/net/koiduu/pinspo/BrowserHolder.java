@@ -137,7 +137,8 @@ public final class BrowserHolder {
                 preloadAttempted = true;
                 if (!future.isCompletedExceptionally()) {
                     Window window = Minecraft.getInstance().getWindow();
-                    int renderWidth = renderWidth(window.getWidth());
+                    int renderWidth = renderWidth(
+                            Math.round(window.getWidth() * config.browserWindowScale));
                     int renderHeight = Math.max(1,
                             Math.round(window.getHeight() * (float) renderWidth / Math.max(1, window.getWidth())));
                     if (browserIfReady(renderWidth, renderHeight) != null) {

@@ -27,7 +27,7 @@ public class PinSettingsScreen extends Screen {
     @Override
     protected void init() {
         int x = (width - WIDGET_WIDTH) / 2;
-        int y = Math.max(40, height / 2 - 90);
+        int y = Math.max(24, height / 2 - 115);
 
         addRenderableWidget(percentSlider(x, y, "option.pinspo.opacity", config.opacity,
                 value -> config.opacity = (float) value));
@@ -68,13 +68,17 @@ public class PinSettingsScreen extends Screen {
         addRenderableWidget(CycleButton
                 .builder((Integer value) -> Component.literal(value + "p"),
                         nearestQuality(config.maxBrowserWidth))
-                .withValues(720, 960, 1280, 1600, 1920)
+                .withValues(640, 800, 960, 1280, 1600)
                 .create(x, y, WIDGET_WIDTH, WIDGET_HEIGHT,
                         Component.translatable("option.pinspo.browser_quality"),
                         (button, value) -> {
                             config.maxBrowserWidth = value;
                             config.save();
                         }));
+        y += WIDGET_HEIGHT + SPACING;
+
+        addRenderableWidget(percentSlider(x, y, "option.pinspo.browser_window", config.browserWindowScale,
+                value -> config.browserWindowScale = (float) value));
         y += WIDGET_HEIGHT + SPACING * 3;
 
         addRenderableWidget(Button
@@ -100,8 +104,8 @@ public class PinSettingsScreen extends Screen {
     }
 
     private static Integer nearestQuality(int width) {
-        int best = 1280;
-        for (int candidate : new int[] {720, 960, 1280, 1600, 1920}) {
+        int best = 960;
+        for (int candidate : new int[] {640, 800, 960, 1280, 1600}) {
             if (Math.abs(candidate - width) < Math.abs(best - width)) {
                 best = candidate;
             }

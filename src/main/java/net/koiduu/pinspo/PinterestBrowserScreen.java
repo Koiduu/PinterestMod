@@ -20,6 +20,11 @@ public class PinterestBrowserScreen extends Screen {
     private MCEFBrowser browser;
     private int browserWidth;
     private int browserHeight;
+    /** Panel bounds in GUI coordinates; the browser is drawn as a window rather than fullscreen. */
+    private int panelX;
+    private int panelY;
+    private int panelWidth;
+    private int panelHeight;
 
     public PinterestBrowserScreen(@Nullable Screen parent) {
         super(Component.translatable("screen.pinspo.browser"));
@@ -33,18 +38,24 @@ public class PinterestBrowserScreen extends Screen {
     }
 
     /**
-     * Ratio between Chromium's render surface and GUI coordinates. Chromium paints at framebuffer
-     * resolution rather than GUI-scaled resolution, but the surface is additionally capped by
+     * Ratio between Chromium's render surface and the on-screen panel in GUI coordinates. Chromium
+     * paints at framebuffer resolution, but the surface is additionally capped by
      * {@code maxBrowserWidth} for performance, so this is not simply the GUI scale.
      */
     private float scale() {
-        return browserWidth > 0 ? (float) browserWidth / Math.max(1, width) : 1.0F;
+        return panelWidth > 0 ? (float) browserWidth / panelWidth : 1.0F;
     }
 
     private void acquireBrowser() {
-        int framebufferWidth = width * Math.max(1, minecraft.getWindow().getGuiScale());
+        float windowScale = PinSpoConfig.get().browserWindowScale;
+        panelWidth = Math.max(160, Math.round(width * windowScale));
+        panelHeight = Math.max(120, Math.round(height * windowScale));
+        panelX = (width - panelWidth) / 2;
+        panelY = (height - panelHeight) / 2;
+
+        int framebufferWidth = panelWidth * Math.max(1, minecraft.getWindow().getGuiScale());
         int pixelWidth = BrowserHolder.renderWidth(framebufferWidth);
-        int pixelHeight = Math.max(1, Math.round(height * (float) pixelWidth / Math.max(1, width)));
+        int pixelHeight = Math.max(1, Math.round(panelHeight * (float) pixelWidth / panelWidth));
         if (browser == null) {
             browser = BrowserHolder.browserIfReady(pixelWidth, pixelHeight);
         }
@@ -69,15 +80,17 @@ public class PinterestBrowserScreen extends Screen {
     public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
         acquireBrowser();
         if (browser != null && BrowserHolder.updateTexture()) {
+            guiGraphics.fill(0, 0, width, height, 0xB0000000);
+            guiGraphics.fill(panelX - 1, panelY - 1, panelX + panelWidth + 1, panelY + panelHeight + 1, 0xFFE60023);
             guiGraphics.blit(
                     RenderPipelines.GUI_TEXTURED,
                     BrowserHolder.BROWSER_TEXTURE_ID,
-                    0,
-                    0,
+                    panelX,
+                    panelY,
                     0.0F,
                     0.0F,
-                    width,
-                    height,
+                    panelWidth,
+                    panelHeight,
                     browserWidth,
                     browserHeight,
                     browserWidth,
@@ -108,8 +121,13 @@ public class PinterestBrowserScreen extends Screen {
         if (browser == null) {
             return super.mouseClicked(event, doubled);
         }
+        if (!isInPanel(event.x(), event.y())) {
+            // Clicking the dimmed backdrop closes the window, like a vanilla popup.
+            onClose();
+            return true;
+        }
         if (event.button() == GLFW.GLFW_MOUSE_BUTTON_RIGHT && event.hasShiftDown()) {
-            pinImageAt(Math.round((float) event.x() * scale()), Math.round((float) event.y() * scale()));
+            pinImageAt((int) Math.round(browserX(event.x())), (int) Math.round(browserY(event.y())));
             return true;
         }
         browser.onMouseClicked(toBrowserSpace(event), doubled);
@@ -117,8 +135,20 @@ public class PinterestBrowserScreen extends Screen {
     }
 
     private MouseButtonEvent toBrowserSpace(MouseButtonEvent event) {
-        float scale = scale();
-        return new MouseButtonEvent(event.x() * scale, event.y() * scale, event.buttonInfo());
+        return new MouseButtonEvent(browserX(event.x()), browserY(event.y()), event.buttonInfo());
+    }
+
+    private double browserX(double guiX) {
+        return (guiX - panelX) * scale();
+    }
+
+    private double browserY(double guiY) {
+        return (guiY - panelY) * scale();
+    }
+
+    private boolean isInPanel(double guiX, double guiY) {
+        return guiX >= panelX && guiX < panelX + panelWidth
+                && guiY >= panelY && guiY < panelY + panelHeight;
     }
 
     private void pinImageAt(int x, int y) {
@@ -150,8 +180,8 @@ public class PinterestBrowserScreen extends Screen {
     public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
         if (browser != null) {
             browser.onMouseScrolled(
-                    Math.round((float) mouseX * scale()),
-                    Math.round((float) mouseY * scale()),
+                    (int) Math.round(browserX(mouseX)),
+                    (int) Math.round(browserY(mouseY)),
                     verticalAmount);
             return true;
         }
@@ -161,7 +191,7 @@ public class PinterestBrowserScreen extends Screen {
     @Override
     public void mouseMoved(double x, double y) {
         if (browser != null) {
-            browser.onMouseMoved(Math.round((float) x * scale()), Math.round((float) y * scale()));
+            browser.onMouseMoved((int) Math.round(browserX(x)), (int) Math.round(browserY(y)));
         }
         super.mouseMoved(x, y);
     }
