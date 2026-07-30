@@ -172,29 +172,29 @@ public class PinBrowseScreen extends Screen {
         boolean hovered = mouseX >= x && mouseX < x + cellWidth && mouseY >= y && mouseY < y + cellHeight;
         guiGraphics.fill(x, y, x + cellWidth, y + cellHeight, hovered ? 0xFF3A3A3A : 0xFF1E1E1E);
 
-        Identifier texture = ThumbnailCache.get(pin.thumbnailUrl());
-        if (texture == null) {
+        ThumbnailCache.Thumbnail thumbnail = ThumbnailCache.get(pin.thumbnailUrl());
+        if (thumbnail == null) {
             guiGraphics.drawCenteredString(font, "...", x + cellWidth / 2, y + cellHeight / 2 - 4, 0xFF777777);
             return;
         }
         float fit = Math.min(
-                (float) (cellWidth - 2) / pin.width(),
-                (float) (cellHeight - 2) / pin.height());
-        int drawWidth = Math.max(1, Math.round(pin.width() * fit));
-        int drawHeight = Math.max(1, Math.round(pin.height() * fit));
+                (float) (cellWidth - 2) / thumbnail.width(),
+                (float) (cellHeight - 2) / thumbnail.height());
+        int drawWidth = Math.max(1, Math.round(thumbnail.width() * fit));
+        int drawHeight = Math.max(1, Math.round(thumbnail.height() * fit));
         guiGraphics.blit(
                 RenderPipelines.GUI_TEXTURED,
-                texture,
+                thumbnail.texture(),
                 x + (cellWidth - drawWidth) / 2,
                 y + (cellHeight - drawHeight) / 2,
                 0.0F,
                 0.0F,
                 drawWidth,
                 drawHeight,
-                pin.width(),
-                pin.height(),
-                pin.width(),
-                pin.height(),
+                thumbnail.width(),
+                thumbnail.height(),
+                thumbnail.width(),
+                thumbnail.height(),
                 0xFFFFFFFF);
         if (hovered) {
             guiGraphics.fill(x, y + cellHeight - 10, x + cellWidth, y + cellHeight, 0xC0000000);

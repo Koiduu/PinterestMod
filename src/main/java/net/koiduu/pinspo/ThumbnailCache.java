@@ -22,7 +22,7 @@ import java.util.concurrent.CompletableFuture;
 /** Downloads grid thumbnails off-thread and keeps them as textures for as long as the grid is open. */
 public final class ThumbnailCache {
 
-    private static final Map<String, Identifier> TEXTURES = new HashMap<>();
+    private static final Map<String, Thumbnail> TEXTURES = new HashMap<>();
     private static final Set<String> IN_FLIGHT = new HashSet<>();
     private static final Set<String> FAILED = new HashSet<>();
 
@@ -32,10 +32,14 @@ public final class ThumbnailCache {
     private ThumbnailCache() {
     }
 
+    /** A registered thumbnail texture and its real pixel size. */
+    public record Thumbnail(Identifier texture, int width, int height) {
+    }
+
     /** Returns the thumbnail texture, starting a download the first time a URL is requested. */
     @Nullable
-    public static Identifier get(String url) {
-        Identifier existing = TEXTURES.get(url);
+    public static Thumbnail get(String url) {
+        Thumbnail existing = TEXTURES.get(url);
         if (existing != null || FAILED.contains(url) || !IN_FLIGHT.add(url)) {
             return existing;
         }
@@ -50,9 +54,11 @@ public final class ThumbnailCache {
                     }
                     Identifier id = Identifier.fromNamespaceAndPath(
                             PinSpoClient.MOD_ID, "thumbnail/" + hash(url));
+                    int width = image.getWidth();
+                    int height = image.getHeight();
                     Minecraft.getInstance().getTextureManager()
                             .register(id, new DynamicTexture(() -> "PinSpo thumbnail", image));
-                    TEXTURES.put(url, id);
+                    TEXTURES.put(url, new Thumbnail(id, width, height));
                 }));
         return null;
     }
@@ -71,7 +77,7 @@ public final class ThumbnailCache {
                 PinSpoClient.LOGGER.warn("Thumbnail {} returned HTTP {}", url, response.statusCode());
                 return null;
             }
-            return NativeImage.read(response.body());
+            return ImageDecoder.decode(response.body());
         } catch (Exception e) {
             PinSpoClient.LOGGER.warn("Thumbnail download failed for {}: {}", url, e.toString());
             return null;
@@ -81,7 +87,7 @@ public final class ThumbnailCache {
     /** Releases every thumbnail texture; called when the browse screen closes. */
     public static void clear() {
         Minecraft client = Minecraft.getInstance();
-        TEXTURES.values().forEach(id -> client.getTextureManager().release(id));
+        TEXTURES.values().forEach(thumbnail -> client.getTextureManager().release(thumbnail.texture()));
         TEXTURES.clear();
         FAILED.clear();
     }

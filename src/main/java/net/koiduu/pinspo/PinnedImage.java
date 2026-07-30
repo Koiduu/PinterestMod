@@ -99,7 +99,7 @@ public final class PinnedImage {
         Path cacheFile = CACHE_DIR.resolve(cacheName(url));
         if (Files.isRegularFile(cacheFile)) {
             try {
-                return downscale(NativeImage.read(Files.readAllBytes(cacheFile)));
+                return downscale(ImageDecoder.decode(Files.readAllBytes(cacheFile)));
             } catch (Exception e) {
                 PinSpoClient.LOGGER.warn("Discarding unreadable cached image {}", cacheFile, e);
                 try {
@@ -133,7 +133,7 @@ public final class PinnedImage {
             PinSpoClient.LOGGER.warn("Could not cache pinned image", e);
         }
         try {
-            return downscale(NativeImage.read(bytes));
+            return downscale(ImageDecoder.decode(bytes));
         } catch (IOException e) {
             PinSpoClient.LOGGER.warn("Could not decode image {}", imageUrl, e);
             return null;
