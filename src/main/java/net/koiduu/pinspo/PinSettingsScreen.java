@@ -63,6 +63,18 @@ public class PinSettingsScreen extends Screen {
                             config.preferOriginalResolution = value;
                             config.save();
                         }));
+        y += WIDGET_HEIGHT + SPACING;
+
+        addRenderableWidget(CycleButton
+                .builder((Integer value) -> Component.literal(value + "p"),
+                        nearestQuality(config.maxBrowserWidth))
+                .withValues(720, 960, 1280, 1600, 1920)
+                .create(x, y, WIDGET_WIDTH, WIDGET_HEIGHT,
+                        Component.translatable("option.pinspo.browser_quality"),
+                        (button, value) -> {
+                            config.maxBrowserWidth = value;
+                            config.save();
+                        }));
         y += WIDGET_HEIGHT + SPACING * 3;
 
         addRenderableWidget(Button
@@ -85,6 +97,16 @@ public class PinSettingsScreen extends Screen {
                 .builder(Component.translatable("gui.done"), button -> onClose())
                 .bounds(x, y, WIDGET_WIDTH, WIDGET_HEIGHT)
                 .build());
+    }
+
+    private static Integer nearestQuality(int width) {
+        int best = 1280;
+        for (int candidate : new int[] {720, 960, 1280, 1600, 1920}) {
+            if (Math.abs(candidate - width) < Math.abs(best - width)) {
+                best = candidate;
+            }
+        }
+        return best;
     }
 
     private AbstractSliderButton percentSlider(int x, int y, String translationKey, float initialValue, DoubleConsumer setter) {

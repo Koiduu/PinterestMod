@@ -1,5 +1,6 @@
 package net.koiduu.pinspo;
 
+import com.mojang.blaze3d.platform.Window;
 import net.dimaskama.mcef.api.MCEFApi;
 import net.dimaskama.mcef.api.MCEFBrowser;
 import net.minecraft.client.Minecraft;
@@ -28,6 +29,7 @@ public final class BrowserHolder {
     @Nullable
     private static MCEFBrowser browser;
     private static boolean initFailureReported;
+    private static boolean preloadAttempted;
     private static long lastUsedMillis;
     private static boolean visible;
 
@@ -69,6 +71,7 @@ public final class BrowserHolder {
             try {
                 browser = future.join().createBrowser(HOME_URL, false);
                 browser.resize(Math.max(width, 1), Math.max(height, 1));
+                browser.getCefBrowser().setWindowlessFrameRate(PinSpoConfig.get().browserFrameRate);
             } catch (Throwable e) {
                 browser = null;
                 PinSpoClient.LOGGER.error("Failed to create embedded browser", e);
@@ -78,6 +81,11 @@ public final class BrowserHolder {
         }
         markUsed();
         return browser;
+    }
+
+    /** Caps Chromium's horizontal render resolution; the frame is upscaled to fill the screen. */
+    public static int renderWidth(int framebufferWidth) {
+        return Math.min(framebufferWidth, PinSpoConfig.get().maxBrowserWidth);
     }
 
     public static void markUsed() {
@@ -120,7 +128,26 @@ public final class BrowserHolder {
     }
 
     public static void tick() {
-        int idleMinutes = PinSpoConfig.get().idleDisposeMinutes;
+        PinSpoConfig config = PinSpoConfig.get();
+        if (config.preloadBrowser && !preloadAttempted && browser == null && !visible) {
+            // Warm Chromium up in the background: MCEF init plus the first Pinterest load takes tens of
+            // seconds, and doing it before the keybind is pressed makes opening feel instant.
+            CompletableFuture<MCEFApi> future = api();
+            if (future.isDone()) {
+                preloadAttempted = true;
+                if (!future.isCompletedExceptionally()) {
+                    Window window = Minecraft.getInstance().getWindow();
+                    int renderWidth = renderWidth(window.getWidth());
+                    int renderHeight = Math.max(1,
+                            Math.round(window.getHeight() * (float) renderWidth / Math.max(1, window.getWidth())));
+                    if (browserIfReady(renderWidth, renderHeight) != null) {
+                        setVisible(false);
+                    }
+                }
+            }
+        }
+
+        int idleMinutes = config.idleDisposeMinutes;
         if (browser == null || visible || idleMinutes <= 0) {
             return;
         }

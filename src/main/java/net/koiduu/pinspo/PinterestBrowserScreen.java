@@ -33,16 +33,18 @@ public class PinterestBrowserScreen extends Screen {
     }
 
     /**
-     * Chromium renders at real framebuffer resolution, not GUI-scaled resolution: sizing it in GUI
-     * coordinates would render a tiny page and stretch it over the whole screen.
+     * Ratio between Chromium's render surface and GUI coordinates. Chromium paints at framebuffer
+     * resolution rather than GUI-scaled resolution, but the surface is additionally capped by
+     * {@code maxBrowserWidth} for performance, so this is not simply the GUI scale.
      */
-    private int scale() {
-        return Math.max(1, minecraft.getWindow().getGuiScale());
+    private float scale() {
+        return browserWidth > 0 ? (float) browserWidth / Math.max(1, width) : 1.0F;
     }
 
     private void acquireBrowser() {
-        int pixelWidth = width * scale();
-        int pixelHeight = height * scale();
+        int framebufferWidth = width * Math.max(1, minecraft.getWindow().getGuiScale());
+        int pixelWidth = BrowserHolder.renderWidth(framebufferWidth);
+        int pixelHeight = Math.max(1, Math.round(height * (float) pixelWidth / Math.max(1, width)));
         if (browser == null) {
             browser = BrowserHolder.browserIfReady(pixelWidth, pixelHeight);
         }
@@ -107,7 +109,7 @@ public class PinterestBrowserScreen extends Screen {
             return super.mouseClicked(event, doubled);
         }
         if (event.button() == GLFW.GLFW_MOUSE_BUTTON_RIGHT && event.hasShiftDown()) {
-            pinImageAt((int) event.x() * scale(), (int) event.y() * scale());
+            pinImageAt(Math.round((float) event.x() * scale()), Math.round((float) event.y() * scale()));
             return true;
         }
         browser.onMouseClicked(toBrowserSpace(event), doubled);
@@ -115,7 +117,7 @@ public class PinterestBrowserScreen extends Screen {
     }
 
     private MouseButtonEvent toBrowserSpace(MouseButtonEvent event) {
-        int scale = scale();
+        float scale = scale();
         return new MouseButtonEvent(event.x() * scale, event.y() * scale, event.buttonInfo());
     }
 
@@ -147,7 +149,10 @@ public class PinterestBrowserScreen extends Screen {
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
         if (browser != null) {
-            browser.onMouseScrolled((int) mouseX * scale(), (int) mouseY * scale(), verticalAmount);
+            browser.onMouseScrolled(
+                    Math.round((float) mouseX * scale()),
+                    Math.round((float) mouseY * scale()),
+                    verticalAmount);
             return true;
         }
         return super.mouseScrolled(mouseX, mouseY, horizontalAmount, verticalAmount);
@@ -156,7 +161,7 @@ public class PinterestBrowserScreen extends Screen {
     @Override
     public void mouseMoved(double x, double y) {
         if (browser != null) {
-            browser.onMouseMoved((int) x * scale(), (int) y * scale());
+            browser.onMouseMoved(Math.round((float) x * scale()), Math.round((float) y * scale()));
         }
         super.mouseMoved(x, y);
     }

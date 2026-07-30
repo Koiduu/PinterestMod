@@ -33,6 +33,15 @@ public class PinSpoConfig {
     public boolean preferOriginalResolution = false;
     /** Currently pinned image URL; re-pinned from the on-disk cache on startup. */
     public String pinnedUrl = "";
+    /**
+     * Chromium paints off-screen on the CPU, so its cost scales with pixel count: capping the render
+     * width and upscaling the result is by far the biggest performance lever.
+     */
+    public int maxBrowserWidth = 1280;
+    /** Chromium off-screen frame rate. Lower is cheaper; 60 is smooth. */
+    public int browserFrameRate = 60;
+    /** Start Chromium in the background at game launch so the first press of the keybind is instant. */
+    public boolean preloadBrowser = true;
     /** Minutes of the browser being unused before it is disposed; 0 disables idle disposal. */
     public int idleDisposeMinutes = 5;
 
@@ -82,6 +91,8 @@ public class PinSpoConfig {
         scale = Math.clamp(scale, 0.05F, 1.0F);
         opacity = Math.clamp(opacity, 0.05F, 1.0F);
         idleDisposeMinutes = Math.clamp(idleDisposeMinutes, 0, 60);
+        maxBrowserWidth = Math.clamp(maxBrowserWidth, 640, 3840);
+        browserFrameRate = Math.clamp(browserFrameRate, 15, 120);
     }
 
     private static float clamp01(float value) {
