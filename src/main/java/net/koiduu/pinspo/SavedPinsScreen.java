@@ -53,14 +53,13 @@ public class SavedPinsScreen extends PinTabScreen {
         }
 
         sidebarLeft = MARGIN;
-        sidebarTop = CONTENT_TOP + 26;
+        sidebarTop = CONTENT_TOP + 48;
         sidebarBottom = height - FOOTER_HEIGHT - 8;
 
-        int buttonWidth = (SIDEBAR_WIDTH - 4) / 2;
         addRenderableWidget(Button
                 .builder(Component.translatable("screen.pinspo.new_folder"),
                         button -> minecraft.setScreen(new FolderPickerScreen(this, null)))
-                .bounds(sidebarLeft, CONTENT_TOP, buttonWidth, 20)
+                .bounds(sidebarLeft, CONTENT_TOP, SIDEBAR_WIDTH, 20)
                 .build());
         Button delete = Button
                 .builder(Component.translatable("screen.pinspo.delete_folder"), button -> {
@@ -68,7 +67,7 @@ public class SavedPinsScreen extends PinTabScreen {
                     folder = RECENT;
                     rebuild();
                 })
-                .bounds(sidebarLeft + buttonWidth + 4, CONTENT_TOP, buttonWidth, 20)
+                .bounds(sidebarLeft, CONTENT_TOP + 22, SIDEBAR_WIDTH, 20)
                 .build();
         delete.active = !isRecent();
         addRenderableWidget(delete);
@@ -85,7 +84,7 @@ public class SavedPinsScreen extends PinTabScreen {
                 .bounds(actionsX + 100, CONTENT_TOP, 96, 20)
                 .build());
 
-        grid.setBounds(actionsX, CONTENT_TOP + 26, width - MARGIN, height - FOOTER_HEIGHT - 8);
+        grid.setBounds(actionsX, CONTENT_TOP + 48, width - MARGIN, height - FOOTER_HEIGHT - 8);
         grid.setPins(pinsInFolder());
     }
 
@@ -147,7 +146,7 @@ public class SavedPinsScreen extends PinTabScreen {
         Component hint = feedback != null
                 ? feedback
                 : Component.translatable(isRecent() ? "screen.pinspo.recent_hint" : "screen.pinspo.remove_hint");
-        guiGraphics.drawString(font, hint, sidebarLeft + SIDEBAR_WIDTH + 8, height - FOOTER_HEIGHT + 12,
+        guiGraphics.drawString(font, hint, sidebarLeft + SIDEBAR_WIDTH + 8, CONTENT_TOP + 30,
                 COLOR_MUTED, false);
     }
 

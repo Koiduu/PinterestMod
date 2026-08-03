@@ -73,7 +73,7 @@ public class PinBrowseScreen extends PinTabScreen {
                 .bounds(width - MARGIN - 70, CONTENT_TOP, 70, 20)
                 .build());
 
-        grid.setBounds(MARGIN, CONTENT_TOP + 26, width - MARGIN, height - FOOTER_HEIGHT - 8);
+        grid.setBounds(MARGIN, CONTENT_TOP + 38, width - MARGIN, height - FOOTER_HEIGHT - 8);
         if (!query.isEmpty() && grid.pins().isEmpty()) {
             loadMore();
         }
@@ -146,7 +146,7 @@ public class PinBrowseScreen extends PinTabScreen {
             guiGraphics.drawCenteredString(font, message, width / 2, height / 2 - 4, COLOR_MUTED);
         } else {
             guiGraphics.drawString(font, Component.translatable("screen.pinspo.save_hint"),
-                    MARGIN, height - FOOTER_HEIGHT + 12, COLOR_MUTED, false);
+                    MARGIN, CONTENT_TOP + 24, COLOR_MUTED, false);
             if (loading) {
                 guiGraphics.drawCenteredString(font, Component.translatable("screen.pinspo.searching"),
                         width / 2, height - FOOTER_HEIGHT - 14, COLOR_MUTED);

@@ -38,9 +38,9 @@ public class PinAccountScreen extends PinTabScreen {
 
         int x = (width - WIDGET_WIDTH) / 2;
         panelTop = CONTENT_TOP + 4;
-        int y = panelTop + 40;
         boolean signedIn = PinterestAccount.isSignedIn();
 
+        int y = panelTop + 34;
         addRenderableWidget(Button
                 .builder(Component.translatable("screen.pinspo.sign_in_external"),
                         button -> Util.getPlatform().openUri(LOGIN_URL))
@@ -57,7 +57,7 @@ public class PinAccountScreen extends PinTabScreen {
                 .builder(Component.translatable("screen.pinspo.paste_sign_in"), button -> signInWithPastedSession())
                 .bounds(x + WIDGET_WIDTH - 58, y, 58, 20)
                 .build());
-        y += 40;
+        y += 44;
 
         addRenderableWidget(Button
                 .builder(Component.translatable(signedIn
@@ -113,7 +113,7 @@ public class PinAccountScreen extends PinTabScreen {
     @Override
     public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
         int left = (width - WIDGET_WIDTH) / 2 - 12;
-        renderPanel(guiGraphics, left, panelTop, left + WIDGET_WIDTH + 24, panelTop + 152);
+        renderPanel(guiGraphics, left, panelTop, left + WIDGET_WIDTH + 24, panelTop + 154);
         super.render(guiGraphics, mouseX, mouseY, partialTick);
 
         String username = PinterestAccount.username();
@@ -121,13 +121,17 @@ public class PinAccountScreen extends PinTabScreen {
                 ? Component.translatable("screen.pinspo.signed_in",
                         username.isEmpty() ? Component.translatable("screen.pinspo.unknown_user") : username)
                 : Component.translatable("screen.pinspo.signed_out");
-        guiGraphics.drawCenteredString(font, status, width / 2, panelTop + 10, COLOR_TEXT);
-        guiGraphics.drawCenteredString(font, Component.translatable("screen.pinspo.external_hint"),
-                width / 2, panelTop + 24, COLOR_MUTED);
-        guiGraphics.drawCenteredString(font, Component.translatable("screen.pinspo.sign_in_hint"),
-                width / 2, panelTop + 116, COLOR_MUTED);
+        guiGraphics.drawCenteredString(font, status, width / 2, panelTop + 8, COLOR_TEXT);
+        guiGraphics.drawCenteredString(font,
+                font.plainSubstrByWidth(
+                        Component.translatable("screen.pinspo.external_hint").getString(), WIDGET_WIDTH + 20),
+                width / 2, panelTop + 21, COLOR_MUTED);
+        guiGraphics.drawCenteredString(font,
+                font.plainSubstrByWidth(
+                        Component.translatable("screen.pinspo.sign_in_hint").getString(), WIDGET_WIDTH + 20),
+                width / 2, panelTop + 91, COLOR_MUTED);
         if (feedback != null) {
-            guiGraphics.drawCenteredString(font, feedback, width / 2, panelTop + 160, 0xFFE0A0A0);
+            guiGraphics.drawCenteredString(font, feedback, width / 2, panelTop + 162, 0xFFE0A0A0);
         }
     }
 }

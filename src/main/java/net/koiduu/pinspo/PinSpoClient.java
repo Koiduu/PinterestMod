@@ -45,11 +45,14 @@ public class PinSpoClient implements ClientModInitializer {
         PinnedImage.restore();
         PinterestAccount.restore();
 
+        // Hypixel announces themes as system messages, but relayed player chat arrives on CHAT.
         ClientReceiveMessageEvents.GAME.register((message, overlay) -> {
             if (!overlay) {
                 BuildBattleMode.onChatMessage(message);
             }
         });
+        ClientReceiveMessageEvents.CHAT.register((message, signedMessage, sender, params, timestamp) ->
+                BuildBattleMode.onChatMessage(message));
 
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
             BrowserHolder.dispose();
