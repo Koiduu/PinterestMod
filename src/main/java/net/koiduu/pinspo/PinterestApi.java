@@ -17,6 +17,7 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -91,6 +92,52 @@ public final class PinterestApi {
             PinSpoClient.LOGGER.warn("Could not read the Pinterest user session", e);
             return null;
         }
+    }
+
+    /**
+     * Logs in with an email/username and password against the same endpoint pinterest.com's login form
+     * posts to. Pinterest often answers with a bot check instead, in which case this fails and the
+     * browser flow has to be used.
+     *
+     * @return the resulting session cookies, or an empty map when the login was not accepted
+     */
+    public static Map<String, String> logIn(String emailOrUsername, String password) {
+        try {
+            JsonObject options = new JsonObject();
+            options.addProperty("username_or_email", emailOrUsername);
+            options.addProperty("password", password);
+            JsonObject data = new JsonObject();
+            data.add("options", options);
+            data.add("context", new JsonObject());
+
+            String body = "source_url=" + encode("/login/") + "&data=" + encode(data.toString());
+            HttpRequest request = requestBuilder(
+                    URI.create("https://www.pinterest.com/resource/UserSessionResource/create/"), "/login/")
+                    .header("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8")
+                    .header("X-Pinterest-PWS-Handler", "www/login.js")
+                    .POST(HttpRequest.BodyPublishers.ofString(body))
+                    .build();
+            HttpResponse<String> response = client().send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() / 100 != 2) {
+                PinSpoClient.LOGGER.warn("Pinterest rejected the login with HTTP {}", response.statusCode());
+                return Map.of();
+            }
+            return sessionCookies();
+        } catch (Exception e) {
+            PinSpoClient.LOGGER.warn("Pinterest login failed", e);
+            return Map.of();
+        }
+    }
+
+    /** The cookies currently held for pinterest.com, so a successful login can be persisted. */
+    public static Map<String, String> sessionCookies() {
+        Map<String, String> collected = new LinkedHashMap<>();
+        if (cookies != null) {
+            for (HttpCookie cookie : cookies.getCookieStore().getCookies()) {
+                collected.put(cookie.getName(), cookie.getValue());
+            }
+        }
+        return collected;
     }
 
     public static CompletableFuture<Page> search(String query, @Nullable String bookmark) {

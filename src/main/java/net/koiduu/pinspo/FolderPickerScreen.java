@@ -1,7 +1,6 @@
 package net.koiduu.pinspo;
 
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
@@ -35,13 +34,10 @@ public class FolderPickerScreen extends Screen {
 
         if (pin != null) {
             for (String folder : List.copyOf(SavedPins.folderNames())) {
-                addRenderableWidget(Button
-                        .builder(Component.literal(folder), button -> {
-                            SavedPins.add(folder, pin);
-                            onClose();
-                        })
-                        .bounds(x, y, WIDGET_WIDTH, 20)
-                        .build());
+                addRenderableWidget(PinButton.of(x, y, WIDGET_WIDTH, 20, Component.literal(folder), () -> {
+                    SavedPins.add(folder, pin);
+                    onClose();
+                }));
                 y += 22;
             }
             y += 8;
@@ -55,16 +51,12 @@ public class FolderPickerScreen extends Screen {
         setInitialFocus(nameBox);
         y += 24;
 
-        addRenderableWidget(Button
-                .builder(Component.translatable("screen.pinspo.create_folder"), button -> createFolder())
-                .bounds(x, y, WIDGET_WIDTH, 20)
-                .build());
+        addRenderableWidget(PinButton.primary(x, y, WIDGET_WIDTH, 20,
+                Component.translatable("screen.pinspo.create_folder"), this::createFolder));
         y += 24;
 
-        addRenderableWidget(Button
-                .builder(Component.translatable("gui.cancel"), button -> onClose())
-                .bounds(x, y, WIDGET_WIDTH, 20)
-                .build());
+        addRenderableWidget(PinButton.of(x, y, WIDGET_WIDTH, 20,
+                Component.translatable("gui.cancel"), this::onClose));
     }
 
     private void createFolder() {

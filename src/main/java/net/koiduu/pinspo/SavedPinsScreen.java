@@ -1,7 +1,6 @@
 package net.koiduu.pinspo;
 
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.renderer.RenderPipelines;
@@ -56,33 +55,25 @@ public class SavedPinsScreen extends PinTabScreen {
         sidebarTop = CONTENT_TOP + 48;
         sidebarBottom = height - FOOTER_HEIGHT - 8;
 
-        addRenderableWidget(Button
-                .builder(Component.translatable("screen.pinspo.new_folder"),
-                        button -> minecraft.setScreen(new FolderPickerScreen(this, null)))
-                .bounds(sidebarLeft, CONTENT_TOP, SIDEBAR_WIDTH, 20)
-                .build());
-        Button delete = Button
-                .builder(Component.translatable("screen.pinspo.delete_folder"), button -> {
+        addRenderableWidget(PinButton.primary(sidebarLeft, CONTENT_TOP, SIDEBAR_WIDTH, 20,
+                Component.translatable("screen.pinspo.new_folder"),
+                () -> minecraft.setScreen(new FolderPickerScreen(this, null))));
+        PinButton delete = PinButton.of(sidebarLeft, CONTENT_TOP + 22, SIDEBAR_WIDTH, 20,
+                Component.translatable("screen.pinspo.delete_folder"), () -> {
                     SavedPins.deleteFolder(folder);
                     folder = RECENT;
                     rebuild();
-                })
-                .bounds(sidebarLeft, CONTENT_TOP + 22, SIDEBAR_WIDTH, 20)
-                .build();
+                });
         delete.active = !isRecent();
         addRenderableWidget(delete);
 
         int actionsX = sidebarLeft + SIDEBAR_WIDTH + 8;
-        Button share = Button
-                .builder(Component.translatable("screen.pinspo.share_folder"), button -> shareFolder())
-                .bounds(actionsX, CONTENT_TOP, 96, 20)
-                .build();
+        PinButton share = PinButton.of(actionsX, CONTENT_TOP, 96, 20,
+                Component.translatable("screen.pinspo.share_folder"), this::shareFolder);
         share.active = !pinsInFolder().isEmpty();
         addRenderableWidget(share);
-        addRenderableWidget(Button
-                .builder(Component.translatable("screen.pinspo.import_code"), button -> importCode())
-                .bounds(actionsX + 100, CONTENT_TOP, 96, 20)
-                .build());
+        addRenderableWidget(PinButton.of(actionsX + 100, CONTENT_TOP, 96, 20,
+                Component.translatable("screen.pinspo.import_code"), this::importCode));
 
         grid.setBounds(actionsX, CONTENT_TOP + 48, width - MARGIN, height - FOOTER_HEIGHT - 8);
         grid.setPins(pinsInFolder());

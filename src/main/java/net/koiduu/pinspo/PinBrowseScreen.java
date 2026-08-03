@@ -1,7 +1,6 @@
 package net.koiduu.pinspo;
 
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.KeyEvent;
@@ -59,19 +58,13 @@ public class PinBrowseScreen extends PinTabScreen {
         addRenderableWidget(searchBox);
         setInitialFocus(searchBox);
 
-        addRenderableWidget(Button
-                .builder(Component.translatable("screen.pinspo.search_button"), button -> startSearch())
-                .bounds(MARGIN + searchWidth + 6, CONTENT_TOP, 60, 20)
-                .build());
-        addRenderableWidget(Button
-                .builder(Component.translatable("screen.pinspo.random"), button -> pinRandom())
-                .bounds(MARGIN + searchWidth + 70, CONTENT_TOP, 60, 20)
-                .build());
-        addRenderableWidget(Button
-                .builder(Component.translatable("screen.pinspo.full_browser"),
-                        button -> minecraft.setScreen(new PinterestBrowserScreen(this)))
-                .bounds(width - MARGIN - 70, CONTENT_TOP, 70, 20)
-                .build());
+        addRenderableWidget(PinButton.primary(MARGIN + searchWidth + 6, CONTENT_TOP, 60, 20,
+                Component.translatable("screen.pinspo.search_button"), this::startSearch));
+        addRenderableWidget(PinButton.of(MARGIN + searchWidth + 70, CONTENT_TOP, 60, 20,
+                Component.translatable("screen.pinspo.random"), this::pinRandom));
+        addRenderableWidget(PinButton.of(width - MARGIN - 70, CONTENT_TOP, 70, 20,
+                Component.translatable("screen.pinspo.full_browser"),
+                () -> minecraft.setScreen(new PinterestBrowserScreen(this))));
 
         grid.setBounds(MARGIN, CONTENT_TOP + 38, width - MARGIN, height - FOOTER_HEIGHT - 8);
         if (!query.isEmpty() && grid.pins().isEmpty()) {

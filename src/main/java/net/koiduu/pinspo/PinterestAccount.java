@@ -138,6 +138,40 @@ public final class PinterestAccount {
         });
     }
 
+    /**
+     * Signs in with an email/username and password. Pinterest frequently answers with a bot check, so a
+     * failure here is expected rather than exceptional; the browser flow is the fallback.
+     *
+     * @return the confirmed username, or an empty string when the login was not accepted
+     */
+    public static CompletableFuture<String> signInWithPassword(String emailOrUsername, String password) {
+        return CompletableFuture.supplyAsync(() -> {
+            Map<String, String> previous = cookies;
+            Map<String, String> session = PinterestApi.logIn(emailOrUsername, password);
+            if (!session.containsKey("_pinterest_sess")) {
+                PinterestApi.setSessionCookies(previous);
+                return "";
+            }
+            Map<String, String> wanted = new LinkedHashMap<>();
+            for (String name : SESSION_COOKIES) {
+                String value = session.get(name);
+                if (value != null) {
+                    wanted.put(name, value);
+                }
+            }
+            cookies = wanted;
+            PinterestApi.setSessionCookies(cookies);
+            username = fetchUsername();
+            if (username.isEmpty()) {
+                cookies = previous;
+                PinterestApi.setSessionCookies(cookies);
+                return "";
+            }
+            save();
+            return username;
+        });
+    }
+
     public static void signOut() {
         cookies = new LinkedHashMap<>();
         username = "";

@@ -89,19 +89,20 @@ public class PinGrid {
         int thumbHeight = Math.max(16, viewHeight * viewHeight / contentHeight);
         int travel = viewHeight - thumbHeight;
         int thumbTop = top + (int) Math.round(travel * scroll / (contentHeight - viewHeight));
-        guiGraphics.fill(x, top, x + 3, bottom, 0x40FFFFFF);
-        guiGraphics.fill(x, thumbTop, x + 3, thumbTop + thumbHeight, 0xFFAAAAAA);
+        guiGraphics.fill(x, top, x + 3, bottom, 0x30FFFFFF);
+        guiGraphics.fill(x, thumbTop, x + 3, thumbTop + thumbHeight, PinTheme.ACCENT);
     }
 
     private void renderCell(GuiGraphics guiGraphics, Font font, PinterestApi.Pin pin,
                             int x, int y, int mouseX, int mouseY) {
         boolean hovered = mouseX >= x && mouseX < x + cellWidth && mouseY >= y && mouseY < y + cellHeight
                 && mouseY >= top && mouseY < bottom;
-        guiGraphics.fill(x, y, x + cellWidth, y + cellHeight, hovered ? 0xFF3A3A3A : 0xFF1E1E1E);
+        PinTheme.card(guiGraphics, x, y, cellWidth, cellHeight, hovered);
 
         ThumbnailCache.Thumbnail thumbnail = ThumbnailCache.get(pin.thumbnailUrl());
         if (thumbnail == null) {
-            guiGraphics.drawCenteredString(font, "...", x + cellWidth / 2, y + cellHeight / 2 - 4, 0xFF777777);
+            guiGraphics.drawCenteredString(font, "...", x + cellWidth / 2, y + cellHeight / 2 - 4,
+                    PinTheme.TEXT_DISABLED);
             return;
         }
         float fit = Math.min(
@@ -124,9 +125,10 @@ public class PinGrid {
                 thumbnail.height(),
                 0xFFFFFFFF);
         if (hovered) {
-            guiGraphics.fill(x, y + cellHeight - 10, x + cellWidth, y + cellHeight, 0xC0000000);
-            guiGraphics.drawString(font, font.plainSubstrByWidth(pin.title(), cellWidth - 6),
-                    x + 3, y + cellHeight - 9, 0xFFFFFFFF, false);
+            guiGraphics.fill(x + 1, y + cellHeight - 12, x + cellWidth - 1, y + cellHeight - 1, 0xD0121216);
+            guiGraphics.fill(x + 1, y + cellHeight - 13, x + cellWidth - 1, y + cellHeight - 12, PinTheme.ACCENT);
+            guiGraphics.drawString(font, font.plainSubstrByWidth(pin.title(), cellWidth - 8),
+                    x + 4, y + cellHeight - 10, PinTheme.TEXT, false);
         }
     }
 

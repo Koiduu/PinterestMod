@@ -2,7 +2,6 @@ package net.koiduu.pinspo;
 
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractSliderButton;
-import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.CycleButton;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
@@ -76,13 +75,11 @@ public class PinSettingsScreen extends PinTabScreen {
                             config.save();
                         }));
         y += WIDGET_HEIGHT + SPACING;
-        Button removePin = Button
-                .builder(Component.translatable("option.pinspo.remove_pin"), button -> {
+        PinButton removePin = PinButton.of(leftX, y, columnWidth, WIDGET_HEIGHT,
+                Component.translatable("option.pinspo.remove_pin"), () -> {
                     PinnedImage.unpin();
                     rebuild();
-                })
-                .bounds(leftX, y, columnWidth, WIDGET_HEIGHT)
-                .build();
+                });
         removePin.active = PinnedImage.isPinned();
         addRenderableWidget(removePin);
 
@@ -119,11 +116,9 @@ public class PinSettingsScreen extends PinTabScreen {
         addRenderableWidget(percentSlider(rightX, y, "option.pinspo.browser_window", config.browserWindowScale,
                 value -> config.browserWindowScale = (float) value));
         y += WIDGET_HEIGHT + SPACING;
-        addRenderableWidget(Button
-                .builder(Component.translatable("option.pinspo.browse"),
-                        button -> minecraft.setScreen(new PinterestBrowserScreen(this)))
-                .bounds(rightX, y, columnWidth, WIDGET_HEIGHT)
-                .build());
+        addRenderableWidget(PinButton.of(rightX, y, columnWidth, WIDGET_HEIGHT,
+                Component.translatable("option.pinspo.browse"),
+                () -> minecraft.setScreen(new PinterestBrowserScreen(this))));
     }
 
     private void rebuild() {
