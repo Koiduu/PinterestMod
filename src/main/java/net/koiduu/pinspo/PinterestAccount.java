@@ -102,6 +102,42 @@ public final class PinterestAccount {
         });
     }
 
+    /**
+     * Signs in from a session copied out of the player's own browser: either a full cookie header
+     * ({@code _pinterest_sess=...; csrftoken=...}) or the bare {@code _pinterest_sess} value.
+     *
+     * @return the confirmed username, or an empty string if Pinterest rejected the session
+     */
+    public static CompletableFuture<String> signInWithCookies(String raw) {
+        Map<String, String> parsed = new LinkedHashMap<>();
+        for (String part : raw.trim().split(";")) {
+            String piece = part.trim();
+            int equals = piece.indexOf('=');
+            if (equals > 0) {
+                parsed.put(piece.substring(0, equals).trim(), piece.substring(equals + 1).trim());
+            } else if (!piece.isEmpty() && parsed.isEmpty()) {
+                parsed.put("_pinterest_sess", piece);
+            }
+        }
+        if (!parsed.containsKey("_pinterest_sess")) {
+            return CompletableFuture.completedFuture("");
+        }
+        parsed.putIfAbsent("_auth", "1");
+        return CompletableFuture.supplyAsync(() -> {
+            Map<String, String> previous = cookies;
+            cookies = parsed;
+            PinterestApi.setSessionCookies(cookies);
+            username = fetchUsername();
+            if (username.isEmpty()) {
+                cookies = previous;
+                PinterestApi.setSessionCookies(cookies);
+                return "";
+            }
+            save();
+            return username;
+        });
+    }
+
     public static void signOut() {
         cookies = new LinkedHashMap<>();
         username = "";

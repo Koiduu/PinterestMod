@@ -19,8 +19,6 @@ import java.util.concurrent.ThreadLocalRandom;
  */
 public class PinBrowseScreen extends PinTabScreen {
 
-    private static final int HEADER_HEIGHT = 52;
-
     private final PinGrid grid = new PinGrid();
 
     @Nullable
@@ -52,8 +50,8 @@ public class PinBrowseScreen extends PinTabScreen {
     protected void init() {
         addTabs();
 
-        int searchWidth = Math.min(240, width - 150);
-        searchBox = new EditBox(font, 10, 28, searchWidth, 18,
+        int searchWidth = Math.min(260, width - 230);
+        searchBox = new EditBox(font, MARGIN, CONTENT_TOP, searchWidth, 20,
                 Component.translatable("screen.pinspo.search"));
         searchBox.setHint(Component.translatable("screen.pinspo.search_hint"));
         searchBox.setMaxLength(120);
@@ -63,19 +61,19 @@ public class PinBrowseScreen extends PinTabScreen {
 
         addRenderableWidget(Button
                 .builder(Component.translatable("screen.pinspo.search_button"), button -> startSearch())
-                .bounds(searchWidth + 16, 28, 60, 18)
+                .bounds(MARGIN + searchWidth + 6, CONTENT_TOP, 60, 20)
                 .build());
         addRenderableWidget(Button
                 .builder(Component.translatable("screen.pinspo.random"), button -> pinRandom())
-                .bounds(searchWidth + 80, 28, 60, 18)
+                .bounds(MARGIN + searchWidth + 70, CONTENT_TOP, 60, 20)
                 .build());
         addRenderableWidget(Button
                 .builder(Component.translatable("screen.pinspo.full_browser"),
                         button -> minecraft.setScreen(new PinterestBrowserScreen(this)))
-                .bounds(width - 74, 28, 64, 18)
+                .bounds(width - MARGIN - 70, CONTENT_TOP, 70, 20)
                 .build());
 
-        grid.setBounds(10, HEADER_HEIGHT, width - 10, height - FOOTER_HEIGHT);
+        grid.setBounds(MARGIN, CONTENT_TOP + 26, width - MARGIN, height - FOOTER_HEIGHT - 8);
         if (!query.isEmpty() && grid.pins().isEmpty()) {
             loadMore();
         }
@@ -145,13 +143,13 @@ public class PinBrowseScreen extends PinTabScreen {
                     : loading
                             ? Component.translatable("screen.pinspo.searching")
                             : Component.translatable("screen.pinspo.search_prompt");
-            guiGraphics.drawCenteredString(font, message, width / 2, height / 2 - 4, 0xFFAAAAAA);
+            guiGraphics.drawCenteredString(font, message, width / 2, height / 2 - 4, COLOR_MUTED);
         } else {
             guiGraphics.drawString(font, Component.translatable("screen.pinspo.save_hint"),
-                    10, HEADER_HEIGHT - 12, 0xFF808080, false);
+                    MARGIN, height - FOOTER_HEIGHT + 12, COLOR_MUTED, false);
             if (loading) {
                 guiGraphics.drawCenteredString(font, Component.translatable("screen.pinspo.searching"),
-                        width / 2, height - FOOTER_HEIGHT - 12, 0xFFAAAAAA);
+                        width / 2, height - FOOTER_HEIGHT - 14, COLOR_MUTED);
             }
         }
 

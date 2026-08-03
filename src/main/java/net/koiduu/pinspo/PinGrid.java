@@ -76,6 +76,21 @@ public class PinGrid {
             renderCell(guiGraphics, font, pins.get(index), cellX, cellY, mouseX, mouseY);
         }
         guiGraphics.disableScissor();
+        renderScrollbar(guiGraphics, right - 3, top, bottom, scroll, contentHeight());
+    }
+
+    /** Draws a thin scroll indicator, or nothing when everything already fits. */
+    public static void renderScrollbar(GuiGraphics guiGraphics, int x, int top, int bottom,
+                                       double scroll, int contentHeight) {
+        int viewHeight = bottom - top;
+        if (contentHeight <= viewHeight || viewHeight <= 0) {
+            return;
+        }
+        int thumbHeight = Math.max(16, viewHeight * viewHeight / contentHeight);
+        int travel = viewHeight - thumbHeight;
+        int thumbTop = top + (int) Math.round(travel * scroll / (contentHeight - viewHeight));
+        guiGraphics.fill(x, top, x + 3, bottom, 0x40FFFFFF);
+        guiGraphics.fill(x, thumbTop, x + 3, thumbTop + thumbHeight, 0xFFAAAAAA);
     }
 
     private void renderCell(GuiGraphics guiGraphics, Font font, PinterestApi.Pin pin,
