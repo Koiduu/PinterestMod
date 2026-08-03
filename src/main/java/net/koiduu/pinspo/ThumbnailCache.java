@@ -1,0 +1,142 @@
+package net.koiduu.pinspo;
+
+import com.mojang.blaze3d.platform.NativeImage;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.texture.DynamicTexture;
+import net.minecraft.resources.Identifier;
+import org.jetbrains.annotations.Nullable;
+
+import net.fabricmc.loader.api.FabricLoader;
+
+import java.io.IOException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.security.MessageDigest;
+import java.time.Duration;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+
+/** Downloads grid thumbnails off-thread and keeps them as textures for as long as the grid is open. */
+public final class ThumbnailCache {
+
+    private static final Map<String, Thumbnail> TEXTURES = new HashMap<>();
+    private static final Set<String> IN_FLIGHT = new HashSet<>();
+    private static final Set<String> FAILED = new HashSet<>();
+    private static final Path CACHE_DIR =
+            FabricLoader.getInstance().getConfigDir().resolve("pinspo/thumbnails");
+
+    @Nullable
+    private static HttpClient httpClient;
+
+    private ThumbnailCache() {
+    }
+
+    /** A registered thumbnail texture and its real pixel size. */
+    public record Thumbnail(Identifier texture, int width, int height) {
+    }
+
+    /** Returns the thumbnail texture, starting a download the first time a URL is requested. */
+    @Nullable
+    public static Thumbnail get(String url) {
+        Thumbnail existing = TEXTURES.get(url);
+        if (existing != null || FAILED.contains(url) || !IN_FLIGHT.add(url)) {
+            return existing;
+        }
+        CompletableFuture
+                .supplyAsync(() -> download(url))
+                .whenComplete((image, error) -> Minecraft.getInstance().execute(() -> {
+                    IN_FLIGHT.remove(url);
+                    if (image == null) {
+                        FAILED.add(url);
+                        PinSpoClient.LOGGER.warn("Could not load thumbnail {}", url, error);
+                        return;
+                    }
+                    Identifier id = Identifier.fromNamespaceAndPath(
+                            PinSpoClient.MOD_ID, "thumbnail/" + hash(url));
+                    int width = image.getWidth();
+                    int height = image.getHeight();
+                    Minecraft.getInstance().getTextureManager()
+                            .register(id, new DynamicTexture(() -> "PinSpo thumbnail", image));
+                    TEXTURES.put(url, new Thumbnail(id, width, height));
+                }));
+        return null;
+    }
+
+    @Nullable
+    private static NativeImage download(String url) {
+        Path cacheFile = CACHE_DIR.resolve(hash(url) + ".img");
+        if (Files.isRegularFile(cacheFile)) {
+            try {
+                return ImageDecoder.decode(Files.readAllBytes(cacheFile));
+            } catch (Exception e) {
+                try {
+                    Files.deleteIfExists(cacheFile);
+                } catch (IOException ignored) {
+                }
+            }
+        }
+        try {
+            HttpResponse<byte[]> response = client().send(
+                    HttpRequest.newBuilder(URI.create(url))
+                            .timeout(Duration.ofSeconds(15))
+                            .header("User-Agent", "PinSpo/1.0")
+                            .GET()
+                            .build(),
+                    HttpResponse.BodyHandlers.ofByteArray());
+            if (response.statusCode() / 100 != 2) {
+                PinSpoClient.LOGGER.warn("Thumbnail {} returned HTTP {}", url, response.statusCode());
+                return null;
+            }
+            NativeImage image = ImageDecoder.decode(response.body());
+            try {
+                Files.createDirectories(CACHE_DIR);
+                Files.write(cacheFile, response.body());
+            } catch (IOException e) {
+                PinSpoClient.LOGGER.debug("Could not cache thumbnail {}", url, e);
+            }
+            return image;
+        } catch (Exception e) {
+            PinSpoClient.LOGGER.warn("Thumbnail download failed for {}: {}", url, e.toString());
+            return null;
+        }
+    }
+
+    /** Releases every thumbnail texture; called when the browse screen closes. */
+    public static void clear() {
+        Minecraft client = Minecraft.getInstance();
+        TEXTURES.values().forEach(thumbnail -> client.getTextureManager().release(thumbnail.texture()));
+        TEXTURES.clear();
+        FAILED.clear();
+    }
+
+    private static String hash(String url) {
+        try {
+            byte[] digest = MessageDigest.getInstance("SHA-256").digest(url.getBytes(StandardCharsets.UTF_8));
+            StringBuilder name = new StringBuilder();
+            for (int i = 0; i < 8; i++) {
+                name.append("%02x".formatted(digest[i]));
+            }
+            return name.toString();
+        } catch (Exception e) {
+            return Integer.toHexString(url.hashCode());
+        }
+    }
+
+    private static HttpClient client() {
+        if (httpClient == null) {
+            httpClient = HttpClient.newBuilder()
+                    .connectTimeout(Duration.ofSeconds(10))
+                    .followRedirects(HttpClient.Redirect.NORMAL)
+                    .build();
+        }
+        return httpClient;
+    }
+}
