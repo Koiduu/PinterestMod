@@ -49,6 +49,8 @@ public final class PinnedImage {
     private static int imageWidth;
     private static int imageHeight;
     private static boolean downloading;
+    /** Temporarily hides the overlay without unpinning, e.g. during Build Battle voting. */
+    private static boolean hidden;
 
     private PinnedImage() {
     }
@@ -61,8 +63,23 @@ public final class PinnedImage {
         return downloading;
     }
 
+    public static boolean isHidden() {
+        return hidden;
+    }
+
+    public static void setHidden(boolean newHidden) {
+        hidden = newHidden;
+    }
+
+    /** Pins a search result, also recording it in the recent-pin history. */
+    public static void pin(PinterestApi.Pin pin) {
+        PinHistory.add(pin);
+        pin(pin.imageUrl());
+    }
+
     /** Resolves and downloads {@code url}, replacing any currently pinned image once it arrives. */
     public static void pin(String url) {
+        hidden = false;
         PinSpoConfig config = PinSpoConfig.get();
         config.pinnedUrl = url;
         config.save();
@@ -272,7 +289,7 @@ public final class PinnedImage {
     }
 
     public static void render(GuiGraphics guiGraphics) {
-        if (texture == null || imageWidth <= 0 || imageHeight <= 0) {
+        if (hidden || texture == null || imageWidth <= 0 || imageHeight <= 0) {
             return;
         }
         PinSpoConfig config = PinSpoConfig.get();

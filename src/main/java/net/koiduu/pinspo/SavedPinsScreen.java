@@ -8,6 +8,7 @@ import net.minecraft.network.chat.Component;
 import org.jetbrains.annotations.Nullable;
 import org.lwjgl.glfw.GLFW;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /** The player's own reference folders: pick a folder on the left, its saved pins fill the grid. */
@@ -15,6 +16,8 @@ public class SavedPinsScreen extends PinTabScreen {
 
     private static final int HEADER_HEIGHT = 52;
     private static final int SIDEBAR_WIDTH = 90;
+    /** Pseudo-folder backed by {@link PinHistory} rather than by a saved folder. */
+    private static final String RECENT = "\u0000recent";
 
     private final PinGrid grid = new PinGrid();
 
@@ -33,14 +36,19 @@ public class SavedPinsScreen extends PinTabScreen {
     protected void init() {
         addTabs();
 
-        List<String> names = SavedPins.folderNames();
-        if (!names.contains(folder) && !names.isEmpty()) {
+        List<String> names = new ArrayList<>();
+        names.add(RECENT);
+        names.addAll(SavedPins.folderNames());
+        if (!names.contains(folder)) {
             folder = names.getFirst();
         }
         int y = HEADER_HEIGHT;
         for (String name : names) {
+            Component label = RECENT.equals(name)
+                    ? Component.translatable("screen.pinspo.recent")
+                    : Component.literal(name);
             Button button = Button
-                    .builder(Component.literal(name), ignored -> selectFolder(name))
+                    .builder(label, ignored -> selectFolder(name))
                     .bounds(10, y, SIDEBAR_WIDTH, 18)
                     .build();
             button.active = !name.equals(folder);
@@ -54,6 +62,9 @@ public class SavedPinsScreen extends PinTabScreen {
                 .build());
         addRenderableWidget(Button
                 .builder(Component.translatable("screen.pinspo.delete_folder"), button -> {
+                    if (isRecent()) {
+                        return;
+                    }
                     SavedPins.deleteFolder(folder);
                     folder = SavedPins.folderNames().stream().findFirst().orElse(SavedPins.DEFAULT_FOLDER);
                     rebuild();
@@ -62,7 +73,15 @@ public class SavedPinsScreen extends PinTabScreen {
                 .build());
 
         grid.setBounds(SIDEBAR_WIDTH + 16, HEADER_HEIGHT, width - 10, height - FOOTER_HEIGHT);
-        grid.setPins(SavedPins.pins(folder));
+        grid.setPins(pinsInFolder());
+    }
+
+    private boolean isRecent() {
+        return RECENT.equals(folder);
+    }
+
+    private List<PinterestApi.Pin> pinsInFolder() {
+        return isRecent() ? PinHistory.entries() : SavedPins.pins(folder);
     }
 
     private void selectFolder(String name) {
@@ -98,11 +117,15 @@ public class SavedPinsScreen extends PinTabScreen {
             return false;
         }
         if (event.button() == GLFW.GLFW_MOUSE_BUTTON_RIGHT) {
+            if (isRecent()) {
+                minecraft.setScreen(new FolderPickerScreen(this, pin));
+                return true;
+            }
             SavedPins.remove(folder, pin);
-            grid.setPins(SavedPins.pins(folder));
+            grid.setPins(pinsInFolder());
             return true;
         }
-        PinnedImage.pin(pin.imageUrl());
+        PinnedImage.pin(pin);
         onClose();
         return true;
     }

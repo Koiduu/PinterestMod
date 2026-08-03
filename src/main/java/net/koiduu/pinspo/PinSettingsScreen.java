@@ -79,6 +79,26 @@ public class PinSettingsScreen extends Screen {
 
         addRenderableWidget(percentSlider(x, y, "option.pinspo.browser_window", config.browserWindowScale,
                 value -> config.browserWindowScale = (float) value));
+        y += WIDGET_HEIGHT + SPACING;
+
+        addRenderableWidget(CycleButton
+                .onOffBuilder(config.buildBattleMode)
+                .create(x, y, WIDGET_WIDTH, WIDGET_HEIGHT,
+                        Component.translatable("option.pinspo.build_battle"),
+                        (button, value) -> {
+                            config.buildBattleMode = value;
+                            config.save();
+                        }));
+        y += WIDGET_HEIGHT + SPACING;
+
+        addRenderableWidget(CycleButton
+                .onOffBuilder(config.buildBattleRandomPin)
+                .create(x, y, WIDGET_WIDTH, WIDGET_HEIGHT,
+                        Component.translatable("option.pinspo.build_battle_random"),
+                        (button, value) -> {
+                            config.buildBattleRandomPin = value;
+                            config.save();
+                        }));
         y += WIDGET_HEIGHT + SPACING * 3;
 
         addRenderableWidget(Button

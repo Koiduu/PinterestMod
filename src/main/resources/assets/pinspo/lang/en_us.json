@@ -53,6 +53,12 @@
   "option.pinspo.browser_window": "Browser window size: %s",
   "option.pinspo.browse": "Browse Pinterest",
   "option.pinspo.remove_pin": "Remove pin",
+  "screen.pinspo.recent": "Recent",
+  "screen.pinspo.random": "Random",
+  "option.pinspo.build_battle": "Build Battle mode",
+  "option.pinspo.build_battle_random": "Build Battle: auto random pin",
+  "message.pinspo.no_results": "PinSpo: no results for \"%s\".",
+  "message.pinspo.random_pinned": "PinSpo: pinned a random \"%s\" reference.",
   "message.pinspo.pin_failed": "PinSpo: could not download that image.",
   "message.pinspo.browser_unavailable": "PinSpo: the embedded browser failed to start (see the log; antivirus software can block Chromium)."
 }

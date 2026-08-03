@@ -10,6 +10,9 @@ import net.minecraft.network.chat.Component;
 import org.jetbrains.annotations.Nullable;
 import org.lwjgl.glfw.GLFW;
 
+import java.util.List;
+import java.util.concurrent.ThreadLocalRandom;
+
 /**
  * Native Pinterest grid: searches through {@link PinterestApi} and draws the results as plain textures,
  * so browsing for a reference costs nothing like the embedded Chromium browser does.
@@ -31,7 +34,13 @@ public class PinBrowseScreen extends PinTabScreen {
     private Component error;
 
     public PinBrowseScreen(@Nullable Screen parent) {
+        this(parent, "");
+    }
+
+    /** Opens the search tab with {@code initialQuery} already typed in and searched. */
+    public PinBrowseScreen(@Nullable Screen parent, String initialQuery) {
         super(Component.translatable("screen.pinspo.browse"), parent);
+        this.query = initialQuery;
     }
 
     @Override
@@ -57,12 +66,19 @@ public class PinBrowseScreen extends PinTabScreen {
                 .bounds(searchWidth + 16, 28, 60, 18)
                 .build());
         addRenderableWidget(Button
+                .builder(Component.translatable("screen.pinspo.random"), button -> pinRandom())
+                .bounds(searchWidth + 80, 28, 60, 18)
+                .build());
+        addRenderableWidget(Button
                 .builder(Component.translatable("screen.pinspo.full_browser"),
                         button -> minecraft.setScreen(new PinterestBrowserScreen(this)))
                 .bounds(width - 74, 28, 64, 18)
                 .build());
 
         grid.setBounds(10, HEADER_HEIGHT, width - 10, height - FOOTER_HEIGHT);
+        if (!query.isEmpty() && grid.pins().isEmpty()) {
+            loadMore();
+        }
     }
 
     private void startSearch() {
@@ -79,6 +95,20 @@ public class PinBrowseScreen extends PinTabScreen {
         exhausted = false;
         error = null;
         loadMore();
+    }
+
+    /** Pins a random result: from what is already loaded, or from a fresh search of the typed query. */
+    private void pinRandom() {
+        List<PinterestApi.Pin> loaded = grid.pins();
+        if (!loaded.isEmpty()) {
+            PinnedImage.pin(loaded.get(ThreadLocalRandom.current().nextInt(loaded.size())));
+            onClose();
+            return;
+        }
+        if (searchBox != null && !searchBox.getValue().isBlank()) {
+            BuildBattleMode.pinRandom(searchBox.getValue().trim());
+            onClose();
+        }
     }
 
     private void loadMore() {
@@ -143,7 +173,7 @@ public class PinBrowseScreen extends PinTabScreen {
             minecraft.setScreen(new FolderPickerScreen(this, pin));
             return true;
         }
-        PinnedImage.pin(pin.imageUrl());
+        PinnedImage.pin(pin);
         onClose();
         return true;
     }

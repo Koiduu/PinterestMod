@@ -47,6 +47,10 @@ public class PinSpoConfig {
      * not the embedded browser, is the normal way to find a reference.
      */
     public boolean preloadBrowser = false;
+    /** Watch chat for Hypixel Build Battle themes and react to them automatically. */
+    public boolean buildBattleMode = false;
+    /** In Build Battle mode, pin a random matching image instead of opening the search screen. */
+    public boolean buildBattleRandomPin = false;
     /** Minutes of the browser being unused before it is disposed; 0 disables idle disposal. */
     public int idleDisposeMinutes = 5;
 
