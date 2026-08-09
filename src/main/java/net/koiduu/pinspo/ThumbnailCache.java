@@ -72,6 +72,10 @@ public final class ThumbnailCache {
 
     @Nullable
     private static NativeImage download(String url) {
+        if (!PinSecurity.isAllowedImageUrl(url)) {
+            PinSpoClient.LOGGER.warn("Refusing to download a thumbnail from an address that is not Pinterest's CDN");
+            return null;
+        }
         Path cacheFile = CACHE_DIR.resolve(hash(url) + ".img");
         if (Files.isRegularFile(cacheFile)) {
             try {

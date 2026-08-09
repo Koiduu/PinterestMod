@@ -1,34 +1,31 @@
 # PinSpo
 
-Client-side Fabric mod for Minecraft 1.21.11 that embeds a real Pinterest browser in-game and lets you
-turn any pin into a persistent picture-in-picture build reference.
+Client-side Fabric mod for Minecraft 1.21.11 that searches Pinterest in a native Minecraft screen and
+lets you turn any pin into a persistent picture-in-picture build reference. No Chromium, no browser
+runtime — just Pinterest's own image library drawn as plain textures.
 
 ## Usage
 
-- **M** — opens the Pinterest browser (or, when an image is already pinned, the PinSpo settings screen).
-- Search, then click a pin to make it your reference overlay.
-- In the embedded browser, **Shift + Right-Click** an image to pin it.
+- **M** — opens PinSpo (or, when an image is already pinned, the settings tab).
+- **Search** queries the same JSON endpoint pinterest.com's own web app uses (no login needed). Click a
+  pin to make it your reference overlay, right-click to save it into a folder.
+- **Saved** holds your folders plus a Recent list of the last five pins.
+- **Friends** is a chat: add a friend by Minecraft name and send them a reference. Messages travel as
+  Minecraft private messages (`/msg`), so the reference arrives in their PinSpo and one click puts it on
+  their screen. On servers that block `/msg`, **Copy code** / **Paste code** does the same by hand.
+- **Account** signs you in either with your email and password or by logging in with your own browser and
+  pasting the `_pinterest_sess` cookie back. Pinterest often answers a password login with a bot check
+  (HTTP 429); the browser route is the reliable one.
 - **Escape** — closes the current screen without changing the pin.
 
-**M** opens a native Pinterest search grid: it queries the same JSON endpoint pinterest.com's own web
-app uses (no login needed) and draws the results as plain textures, so finding a reference costs no
-Chromium at all. Click a pin to make it your overlay. The **Browser** button still opens the embedded
-Chromium browser for anything the grid can't do (logging in, your own boards).
-
-The embedded browser opens as a centred window (70% of the screen by default) over a dimmed backdrop; clicking
-the backdrop closes it. It renders at a capped resolution (`maxBrowserWidth`, 960 by
-default) because off-screen painting cost scales with pixel count. "Browser window size" and "Browser
-quality" in the settings screen are the two knobs to turn if browsing feels slow.
-
-Settings (opacity, size, screen corner, offsets, original-resolution preference) are stored in
-`config/pinspo.json`. The pinned image itself survives restarts too: its bytes are cached under
-`config/pinspo/images` and re-pinned on startup without hitting the network.
+Settings (opacity, size, screen corner, offsets, original-resolution preference, Build Battle mode) are
+stored in `config/pinspo.json`. The pinned image itself survives restarts too: its bytes are cached under
+`config/pinspo/images` and re-pinned on startup without hitting the network. Folders live in
+`config/pinspo-saved.json`, friends and chats in `config/pinspo-friends.json`.
 
 ## Requirements
 
 - Minecraft 1.21.11, Fabric Loader 0.19.3+, Fabric API
-- [MCEF Modern](https://modrinth.com/project/mcef-modern) — supplies the embedded Chromium runtime.
-  It downloads native Chromium binaries (~150 MB) the first time the browser is opened.
 
 ## Building
 
@@ -40,8 +37,9 @@ The mod jar is written to `build/libs/`.
 
 ## Notes
 
-- Chromium is only initialized the first time you press **M**; while the browser screen is closed the
-  browser stops rendering, and it is disposed on disconnect or after `idleDisposeMinutes` of disuse.
-- Chromium's cookie/cache directory is managed by MCEF Modern
-  (`config/mcef-modern/cache`), which is what makes the Pinterest login survive restarts.
 - The overlay is purely visual and click-through; only one image can be pinned at a time.
+- Everything that arrives from outside the game — share codes, chat messages, pin URLs, folder and friend
+  names, hand-edited config files — goes through `PinSecurity` first: images may only ever be downloaded
+  from Pinterest's own CDN, names cannot contain path separators or formatting codes, friend names must
+  match Minecraft's own name shape (so they cannot extend a command), and share codes carry nothing but a
+  hex image name, never a URL.

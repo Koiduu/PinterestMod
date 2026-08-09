@@ -5,6 +5,7 @@ import com.google.gson.GsonBuilder;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.entity.player.Player;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
 import java.io.Reader;
@@ -13,20 +14,25 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
-/**
- * Friends and the reference inbox. PinSpo is client-side and has no server of its own, so a reference is
- * sent as a share code (chat, Discord, anywhere) and arrives here when the friend imports it.
- */
+/** The friend list and the chat history kept with each friend, stored in {@code pinspo-friends.json}. */
 public final class PinFriends {
 
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final Path PATH = FabricLoader.getInstance().getConfigDir().resolve("pinspo-friends.json");
-    private static final int MAX_MESSAGES = 50;
+    /** Messages kept per conversation; older ones are dropped. */
+    private static final int MAX_MESSAGES = 100;
+    private static final int MAX_FRIENDS = 100;
 
-    /** One received reference: who it came from, what it was called, and the pin itself. */
-    public record Message(String from, String note, PinterestApi.Pin pin, long receivedAt) {
+    /**
+     * One line of a conversation. Exactly one of {@code text} and {@code pin} is meaningful: a pin
+     * message is drawn as a clickable reference, anything else as chat text.
+     */
+    public record Message(String friend, boolean outgoing, String text, @Nullable PinterestApi.Pin pin,
+                          long sentAt) {
     }
 
     private static Stored stored = new Stored();
@@ -36,91 +42,106 @@ public final class PinFriends {
     }
 
     public static List<String> friends() {
-        load();
-        return List.copyOf(stored.friends);
+        return List.copyOf(all().friends);
     }
 
-    public static List<Message> inbox() {
-        load();
-        return List.copyOf(stored.inbox);
+    /** The conversation with {@code friend}, oldest message first. */
+    public static List<Message> conversation(String friend) {
+        return List.copyOf(all().chats.getOrDefault(friend, List.of()));
     }
 
-    public static void addFriend(String name) {
-        load();
-        String trimmed = name.trim();
-        if (trimmed.isEmpty() || stored.friends.contains(trimmed)) {
-            return;
-        }
-        stored.friends.add(trimmed);
-        save();
+    /** Total messages that have not been looked at yet, per friend. */
+    public static int unread(String friend) {
+        return all().unread.getOrDefault(friend, 0);
     }
 
-    public static void removeFriend(String name) {
-        load();
-        if (stored.friends.remove(name)) {
+    public static void markRead(String friend) {
+        if (all().unread.remove(friend) != null) {
             save();
         }
     }
 
-    /** Builds the share code a friend pastes into their own inbox. */
-    public static String compose(String recipient, PinterestApi.Pin pin) {
-        addFriend(recipient);
-        return PinShare.encode(senderName(), List.of(pin));
-    }
-
     /**
-     * Reads a share code as an incoming message.
+     * Adds a friend by Minecraft name.
      *
-     * @return the number of references received, or 0 when the code was not valid
+     * @return true when the name was valid and is now on the list
      */
-    public static int receive(String code) {
-        PinShare.Shared shared = PinShare.decode(code);
-        if (shared == null) {
-            return 0;
+    public static boolean addFriend(String rawName) {
+        String name = rawName.trim();
+        if (!PinSecurity.isPlayerName(name) || all().friends.size() >= MAX_FRIENDS) {
+            return false;
         }
-        load();
-        String from = shared.name() == null || shared.name().isBlank() ? "Someone" : shared.name();
-        long now = System.currentTimeMillis();
-        for (PinterestApi.Pin pin : shared.pins()) {
-            stored.inbox.addFirst(new Message(from, pin.title(), pin, now));
+        if (!all().friends.contains(name)) {
+            all().friends.add(name);
+            save();
         }
-        while (stored.inbox.size() > MAX_MESSAGES) {
-            stored.inbox.removeLast();
-        }
-        addFriend(from);
-        save();
-        return shared.pins().size();
+        return true;
     }
 
-    public static void clearInbox() {
-        load();
-        stored.inbox.clear();
+    public static void removeFriend(String friend) {
+        boolean changed = all().friends.remove(friend);
+        changed |= all().chats.remove(friend) != null;
+        changed |= all().unread.remove(friend) != null;
+        if (changed) {
+            save();
+        }
+    }
+
+    /** Records a message the player just sent to {@code friend}. */
+    public static void recordSent(String friend, String text, @Nullable PinterestApi.Pin pin) {
+        append(new Message(friend, true, PinSecurity.cleanText(text), pin, System.currentTimeMillis()));
+    }
+
+    /** Records a message received from {@code friend}, and counts it as unread. */
+    public static void recordReceived(String friend, String text, @Nullable PinterestApi.Pin pin) {
+        append(new Message(friend, false, PinSecurity.cleanText(text), pin, System.currentTimeMillis()));
+        all().unread.merge(friend, 1, Integer::sum);
         save();
     }
 
-    /** The name attached to outgoing references: the player's own Minecraft name. */
-    public static String senderName() {
+    public static void clearConversation(String friend) {
+        if (all().chats.remove(friend) != null) {
+            all().unread.remove(friend);
+            save();
+        }
+    }
+
+    private static void append(Message message) {
+        String friend = message.friend();
+        if (!PinSecurity.isPlayerName(friend)) {
+            return;
+        }
+        addFriend(friend);
+        List<Message> chat = all().chats.computeIfAbsent(friend, key -> new ArrayList<>());
+        chat.add(message);
+        while (chat.size() > MAX_MESSAGES) {
+            chat.removeFirst();
+        }
+        save();
+    }
+
+    /** The player's own Minecraft name, used as the sender label on outgoing references. */
+    public static String selfName() {
         Player player = Minecraft.getInstance().player;
-        return player == null ? "A builder" : player.getGameProfile().name();
+        return player == null ? "PinSpo" : player.getGameProfile().name();
     }
 
-    private static void load() {
-        if (loaded) {
-            return;
-        }
-        loaded = true;
-        if (!Files.isRegularFile(PATH)) {
-            return;
-        }
-        try (Reader reader = Files.newBufferedReader(PATH, StandardCharsets.UTF_8)) {
-            Stored read = GSON.fromJson(reader, Stored.class);
-            if (read != null) {
-                stored = read;
-                stored.normalise();
+    private static Stored all() {
+        if (!loaded) {
+            loaded = true;
+            if (Files.isRegularFile(PATH)) {
+                try (Reader reader = Files.newBufferedReader(PATH, StandardCharsets.UTF_8)) {
+                    Stored read = GSON.fromJson(reader, Stored.class);
+                    if (read != null) {
+                        stored = read;
+                    }
+                } catch (Exception e) {
+                    PinSpoClient.LOGGER.warn("Could not read the PinSpo friend list", e);
+                }
             }
-        } catch (Exception e) {
-            PinSpoClient.LOGGER.warn("Could not read the PinSpo friend list", e);
+            stored.normalise();
         }
+        return stored;
     }
 
     private static void save() {
@@ -136,11 +157,28 @@ public final class PinFriends {
 
     private static final class Stored {
         List<String> friends = new ArrayList<>();
-        List<Message> inbox = new ArrayList<>();
+        Map<String, List<Message>> chats = new LinkedHashMap<>();
+        Map<String, Integer> unread = new LinkedHashMap<>();
 
+        /** Drops anything a hand-edited or older file might contain that the screens cannot handle. */
         void normalise() {
             friends = friends == null ? new ArrayList<>() : new ArrayList<>(friends);
-            inbox = inbox == null ? new ArrayList<>() : new ArrayList<>(inbox);
+            friends.removeIf(name -> name == null || !PinSecurity.isPlayerName(name));
+            chats = chats == null ? new LinkedHashMap<>() : new LinkedHashMap<>(chats);
+            unread = unread == null ? new LinkedHashMap<>() : new LinkedHashMap<>(unread);
+            chats.entrySet().removeIf(entry ->
+                    entry.getKey() == null || !PinSecurity.isPlayerName(entry.getKey()) || entry.getValue() == null);
+            chats.replaceAll((friend, messages) -> {
+                List<Message> cleaned = new ArrayList<>();
+                for (Message message : messages) {
+                    if (message == null || message.pin() != null && !PinSecurity.isAllowedPin(message.pin())) {
+                        continue;
+                    }
+                    cleaned.add(new Message(friend, message.outgoing(),
+                            PinSecurity.cleanText(message.text()), message.pin(), message.sentAt()));
+                }
+                return cleaned;
+            });
         }
     }
 }

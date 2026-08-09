@@ -3,6 +3,7 @@ package net.koiduu.pinspo;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.network.chat.Component;
@@ -10,29 +11,36 @@ import org.jetbrains.annotations.Nullable;
 import org.lwjgl.glfw.GLFW;
 
 import java.util.List;
+import java.util.Objects;
 
 /**
- * Friends tab: a friend list on the left and an inbox of received references on the right. Sending copies
- * a share code to the clipboard; receiving reads one from it.
+ * Friends tab: friend list on the left, the conversation with the selected friend on the right. Messages
+ * travel as private messages, so a reference sent here shows up in the other player's PinSpo.
  */
 public class PinFriendsScreen extends PinTabScreen {
 
-    private static final int SIDEBAR_WIDTH = 116;
-    private static final int ROW_HEIGHT = 20;
-    private static final int MESSAGE_HEIGHT = 34;
-    private static final int THUMB_SIZE = 30;
+    private static final int SIDEBAR_WIDTH = 110;
+    private static final int FRIEND_ROW_HEIGHT = 20;
+    private static final int BUBBLE_HEIGHT = 16;
+    private static final int PIN_BUBBLE_HEIGHT = 40;
+    private static final int PIN_THUMB = 36;
 
     private List<String> friends = List.of();
-    private List<PinFriends.Message> inbox = List.of();
+    private List<PinFriends.Message> conversation = List.of();
+    @Nullable
+    private String selected;
 
     @Nullable
-    private EditBox nameBox;
+    private EditBox addBox;
+    @Nullable
+    private EditBox messageBox;
     @Nullable
     private Component feedback;
-    private double inboxScroll;
+    private double chatScroll;
     private int listTop;
     private int listBottom;
-    private int inboxLeft;
+    private int chatLeft;
+    private int chatBottom;
 
     public PinFriendsScreen(@Nullable Screen parent) {
         super(Component.translatable("screen.pinspo.friends"), parent);
@@ -46,65 +54,128 @@ public class PinFriendsScreen extends PinTabScreen {
     @Override
     protected void init() {
         friends = PinFriends.friends();
-        inbox = PinFriends.inbox();
-        listTop = CONTENT_TOP + 26;
+        if (selected == null || !friends.contains(selected)) {
+            selected = friends.isEmpty() ? null : friends.getFirst();
+        }
+        if (selected != null) {
+            PinFriends.markRead(selected);
+        }
+        conversation = selected == null ? List.of() : PinFriends.conversation(selected);
+
+        listTop = CONTENT_TOP + 24;
         listBottom = height - FOOTER_HEIGHT - 8;
-        inboxLeft = MARGIN + SIDEBAR_WIDTH + 12;
+        chatLeft = MARGIN + SIDEBAR_WIDTH + 12;
+        chatBottom = listBottom - 24;
 
         addTabs();
 
-        nameBox = new EditBox(font, MARGIN, CONTENT_TOP, SIDEBAR_WIDTH - 26, 20,
+        addBox = new EditBox(font, MARGIN, CONTENT_TOP, SIDEBAR_WIDTH - 22, 18,
                 Component.translatable("screen.pinspo.friend_name"));
-        nameBox.setHint(Component.translatable("screen.pinspo.friend_hint"));
-        nameBox.setMaxLength(32);
-        addRenderableWidget(nameBox);
-        addRenderableWidget(PinButton.primary(MARGIN + SIDEBAR_WIDTH - 22, CONTENT_TOP, 22, 20,
+        addBox.setHint(Component.translatable("screen.pinspo.friend_hint"));
+        addBox.setMaxLength(16);
+        addRenderableWidget(addBox);
+        addRenderableWidget(PinButton.primary(MARGIN + SIDEBAR_WIDTH - 20, CONTENT_TOP, 20, 18,
                 Component.literal("+"), this::addFriend));
 
-        addRenderableWidget(PinButton.primary(inboxLeft, CONTENT_TOP, 110, 20,
-                Component.translatable("screen.pinspo.receive_code"), this::receiveCode));
-        PinButton send = PinButton.of(inboxLeft + 114, CONTENT_TOP, 120, 20,
-                Component.translatable("screen.pinspo.send_pinned"), this::sendPinned);
-        send.active = PinnedImage.isPinned();
+        PinButton sendPin = PinButton.primary(chatLeft, CONTENT_TOP, 120, 18,
+                Component.translatable("screen.pinspo.send_pin"), this::sendCurrentPin);
+        sendPin.active = selected != null && !PinHistory.entries().isEmpty();
+        addRenderableWidget(sendPin);
+        PinButton copyCode = PinButton.of(chatLeft + 124, CONTENT_TOP, 96, 18,
+                Component.translatable("screen.pinspo.copy_code"), this::copyCurrentPin);
+        copyCode.active = !PinHistory.entries().isEmpty();
+        addRenderableWidget(copyCode);
+        PinButton paste = PinButton.of(chatLeft + 224, CONTENT_TOP, 96, 18,
+                Component.translatable("screen.pinspo.paste_code"), this::pasteCode);
+        paste.active = selected != null;
+        addRenderableWidget(paste);
+
+        messageBox = new EditBox(font, chatLeft, chatBottom + 4, width - MARGIN - chatLeft - 54, 18,
+                Component.translatable("screen.pinspo.message"));
+        messageBox.setHint(Component.translatable("screen.pinspo.message_hint"));
+        messageBox.setMaxLength(180);
+        messageBox.setEditable(selected != null);
+        addRenderableWidget(messageBox);
+        PinButton send = PinButton.primary(width - MARGIN - 50, chatBottom + 4, 50, 18,
+                Component.translatable("screen.pinspo.send"), this::sendMessage);
+        send.active = selected != null;
         addRenderableWidget(send);
-        PinButton clear = PinButton.of(inboxLeft + 238, CONTENT_TOP, 70, 20,
-                Component.translatable("screen.pinspo.clear_inbox"), () -> {
-                    PinFriends.clearInbox();
-                    feedback = null;
-                    rebuild();
-                });
-        clear.active = !inbox.isEmpty();
-        addRenderableWidget(clear);
+
+        chatScroll = Math.max(0, contentHeight() - (chatBottom - listTop));
     }
 
     private void addFriend() {
-        if (nameBox == null || nameBox.getValue().isBlank()) {
+        if (addBox == null || addBox.getValue().isBlank()) {
             return;
         }
-        PinFriends.addFriend(nameBox.getValue());
-        nameBox.setValue("");
+        if (!PinFriends.addFriend(addBox.getValue())) {
+            feedback = Component.translatable("screen.pinspo.bad_name");
+            return;
+        }
+        selected = addBox.getValue().trim();
+        addBox.setValue("");
+        feedback = null;
         rebuild();
     }
 
-    /** Copies the currently pinned reference as a share code for a friend to paste. */
-    private void sendPinned() {
-        PinterestApi.Pin pin = PinHistory.entries().isEmpty() ? null : PinHistory.entries().getFirst();
+    private void sendMessage() {
+        if (selected == null || messageBox == null || messageBox.getValue().isBlank()) {
+            return;
+        }
+        if (!PinChat.sendText(selected, messageBox.getValue())) {
+            feedback = Component.translatable("screen.pinspo.send_failed");
+            return;
+        }
+        messageBox.setValue("");
+        feedback = null;
+        rebuild();
+    }
+
+    private void sendCurrentPin() {
+        PinterestApi.Pin pin = currentPin();
+        if (selected == null || pin == null) {
+            feedback = Component.translatable("screen.pinspo.nothing_to_send");
+            return;
+        }
+        if (!PinChat.sendPin(selected, pin)) {
+            feedback = Component.translatable("screen.pinspo.send_failed");
+            return;
+        }
+        feedback = null;
+        rebuild();
+    }
+
+    /** Fallback for players on servers that block private messages: hand over the code by hand. */
+    private void copyCurrentPin() {
+        PinterestApi.Pin pin = currentPin();
         if (pin == null) {
             feedback = Component.translatable("screen.pinspo.nothing_to_send");
             return;
         }
-        minecraft.keyboardHandler.setClipboard(PinShare.encode(PinFriends.senderName(), List.of(pin)));
+        minecraft.keyboardHandler.setClipboard(PinShare.encode(PinFriends.selfName(), List.of(pin)));
         feedback = Component.translatable("screen.pinspo.send_copied");
     }
 
-    private void receiveCode() {
-        int received = PinFriends.receive(minecraft.keyboardHandler.getClipboard());
-        if (received == 0) {
+    private void pasteCode() {
+        if (selected == null) {
+            return;
+        }
+        PinShare.Shared shared = PinShare.decode(minecraft.keyboardHandler.getClipboard());
+        if (shared == null) {
             feedback = Component.translatable("screen.pinspo.import_failed");
             return;
         }
-        feedback = Component.translatable("screen.pinspo.received", received);
+        for (PinterestApi.Pin pin : shared.pins()) {
+            PinFriends.recordReceived(selected, "", pin);
+        }
+        PinFriends.markRead(selected);
+        feedback = Component.translatable("screen.pinspo.received", shared.pins().size());
         rebuild();
+    }
+
+    @Nullable
+    private PinterestApi.Pin currentPin() {
+        return PinHistory.entries().isEmpty() ? null : PinHistory.entries().getFirst();
     }
 
     private void rebuild() {
@@ -115,81 +186,129 @@ public class PinFriendsScreen extends PinTabScreen {
     @Override
     public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
         PinTheme.panel(guiGraphics, MARGIN - 4, listTop - 4, SIDEBAR_WIDTH + 8, listBottom - listTop + 8);
-        PinTheme.panel(guiGraphics, inboxLeft - 4, listTop - 4,
-                width - MARGIN - inboxLeft + 8, listBottom - listTop + 8);
+        PinTheme.panel(guiGraphics, chatLeft - 4, listTop - 4, width - MARGIN - chatLeft + 8,
+                listBottom - listTop + 8);
         super.render(guiGraphics, mouseX, mouseY, partialTick);
 
-        PinTheme.sectionHeader(guiGraphics, font, Component.translatable("screen.pinspo.section.friends"),
-                MARGIN, listTop - 16);
-        PinTheme.sectionHeader(guiGraphics, font, Component.translatable("screen.pinspo.section.inbox"),
-                inboxLeft, listTop - 16);
-
         renderFriends(guiGraphics, mouseX, mouseY);
-        renderInbox(guiGraphics, mouseX, mouseY);
+        renderConversation(guiGraphics, mouseX, mouseY);
 
-        Component hint = feedback != null ? feedback : Component.translatable("screen.pinspo.friends_hint");
-        guiGraphics.drawString(font, hint, MARGIN, height - FOOTER_HEIGHT + 12, PinTheme.TEXT_MUTED, false);
+        Component hint = feedback != null
+                ? feedback
+                : Component.translatable(selected == null
+                        ? "screen.pinspo.friends_empty_hint"
+                        : "screen.pinspo.friends_hint");
+        guiGraphics.drawString(font, font.plainSubstrByWidth(hint.getString(), width - MARGIN * 2 - 90),
+                MARGIN, height - FOOTER_HEIGHT + 12,
+                feedback != null ? PinTheme.ACCENT : PinTheme.TEXT_MUTED, false);
     }
 
     private void renderFriends(GuiGraphics guiGraphics, int mouseX, int mouseY) {
         if (friends.isEmpty()) {
-            guiGraphics.drawString(font, Component.translatable("screen.pinspo.no_friends"),
+            guiGraphics.drawString(font,
+                    font.plainSubstrByWidth(
+                            Component.translatable("screen.pinspo.no_friends").getString(), SIDEBAR_WIDTH),
                     MARGIN + 2, listTop + 4, PinTheme.TEXT_MUTED, false);
             return;
         }
         guiGraphics.enableScissor(MARGIN, listTop, MARGIN + SIDEBAR_WIDTH, listBottom);
         for (int index = 0; index < friends.size(); index++) {
-            int y = listTop + index * ROW_HEIGHT;
+            String friend = friends.get(index);
+            int y = listTop + index * FRIEND_ROW_HEIGHT;
             if (y > listBottom) {
                 break;
             }
             boolean hovered = mouseX >= MARGIN && mouseX < MARGIN + SIDEBAR_WIDTH
-                    && mouseY >= y && mouseY < y + ROW_HEIGHT - 2;
-            PinTheme.card(guiGraphics, MARGIN, y, SIDEBAR_WIDTH, ROW_HEIGHT - 2, hovered);
-            guiGraphics.drawString(font, font.plainSubstrByWidth(friends.get(index), SIDEBAR_WIDTH - 8),
-                    MARGIN + 5, y + 5, PinTheme.TEXT, false);
+                    && mouseY >= y && mouseY < y + FRIEND_ROW_HEIGHT - 2;
+            boolean isSelected = Objects.equals(friend, selected);
+            PinTheme.card(guiGraphics, MARGIN, y, SIDEBAR_WIDTH, FRIEND_ROW_HEIGHT - 2, hovered || isSelected);
+            if (isSelected) {
+                guiGraphics.fill(MARGIN, y, MARGIN + 2, y + FRIEND_ROW_HEIGHT - 2, PinTheme.ACCENT);
+            }
+            int unread = PinFriends.unread(friend);
+            int nameWidth = SIDEBAR_WIDTH - 10 - (unread > 0 ? 14 : 0);
+            guiGraphics.drawString(font, font.plainSubstrByWidth(friend, nameWidth),
+                    MARGIN + 6, y + 5, isSelected ? PinTheme.TEXT : PinTheme.TEXT_MUTED, false);
+            if (unread > 0) {
+                String badge = unread > 9 ? "9+" : String.valueOf(unread);
+                guiGraphics.fill(MARGIN + SIDEBAR_WIDTH - 16, y + 3,
+                        MARGIN + SIDEBAR_WIDTH - 4, y + 14, PinTheme.ACCENT);
+                guiGraphics.drawString(font, badge, MARGIN + SIDEBAR_WIDTH - 13, y + 5, PinTheme.TEXT, false);
+            }
         }
         guiGraphics.disableScissor();
     }
 
-    private void renderInbox(GuiGraphics guiGraphics, int mouseX, int mouseY) {
-        int inboxWidth = width - MARGIN - inboxLeft;
-        if (inbox.isEmpty()) {
-            guiGraphics.drawString(font, Component.translatable("screen.pinspo.no_messages"),
-                    inboxLeft + 2, listTop + 4, PinTheme.TEXT_MUTED, false);
+    private void renderConversation(GuiGraphics guiGraphics, int mouseX, int mouseY) {
+        int chatWidth = width - MARGIN - chatLeft;
+        if (selected == null) {
+            guiGraphics.drawString(font, Component.translatable("screen.pinspo.no_friends_selected"),
+                    chatLeft + 2, listTop + 4, PinTheme.TEXT_MUTED, false);
             return;
         }
-        int contentHeight = inbox.size() * MESSAGE_HEIGHT;
-        inboxScroll = Math.clamp(inboxScroll, 0.0D, Math.max(0.0D, contentHeight - (listBottom - listTop)));
-        guiGraphics.enableScissor(inboxLeft, listTop, inboxLeft + inboxWidth, listBottom);
-        for (int index = 0; index < inbox.size(); index++) {
-            PinFriends.Message message = inbox.get(index);
-            int y = listTop + index * MESSAGE_HEIGHT - (int) inboxScroll;
-            if (y + MESSAGE_HEIGHT < listTop || y > listBottom) {
-                continue;
+        if (conversation.isEmpty()) {
+            guiGraphics.drawString(font, Component.translatable("screen.pinspo.no_messages"),
+                    chatLeft + 2, listTop + 4, PinTheme.TEXT_MUTED, false);
+            return;
+        }
+        int content = contentHeight();
+        chatScroll = Math.clamp(chatScroll, 0.0D, Math.max(0.0D, content - (chatBottom - listTop)));
+        guiGraphics.enableScissor(chatLeft, listTop, chatLeft + chatWidth, chatBottom);
+        int y = listTop - (int) chatScroll;
+        for (PinFriends.Message message : conversation) {
+            int bubbleHeight = message.pin() == null ? BUBBLE_HEIGHT : PIN_BUBBLE_HEIGHT;
+            if (y + bubbleHeight >= listTop && y <= chatBottom) {
+                renderBubble(guiGraphics, message, y, chatWidth, mouseX, mouseY);
             }
-            boolean hovered = mouseX >= inboxLeft && mouseX < inboxLeft + inboxWidth
-                    && mouseY >= y && mouseY < y + MESSAGE_HEIGHT - 2 && mouseY >= listTop && mouseY < listBottom;
-            PinTheme.card(guiGraphics, inboxLeft, y, inboxWidth - 6, MESSAGE_HEIGHT - 2, hovered);
-
-            ThumbnailCache.Thumbnail thumbnail = ThumbnailCache.get(message.pin().thumbnailUrl());
-            if (thumbnail != null) {
-                guiGraphics.blit(RenderPipelines.GUI_TEXTURED, thumbnail.texture(),
-                        inboxLeft + 2, y + 1, 0.0F, 0.0F, THUMB_SIZE, THUMB_SIZE,
-                        thumbnail.width(), thumbnail.height(), thumbnail.width(), thumbnail.height(),
-                        0xFFFFFFFF);
-            }
-            int textX = inboxLeft + THUMB_SIZE + 8;
-            int textWidth = inboxWidth - THUMB_SIZE - 20;
-            guiGraphics.drawString(font,
-                    Component.translatable("screen.pinspo.message_from", message.from()),
-                    textX, y + 6, PinTheme.ACCENT, false);
-            guiGraphics.drawString(font, font.plainSubstrByWidth(message.note(), textWidth),
-                    textX, y + 18, PinTheme.TEXT_MUTED, false);
+            y += bubbleHeight + 2;
         }
         guiGraphics.disableScissor();
-        PinGrid.renderScrollbar(guiGraphics, inboxLeft + inboxWidth - 4, listTop, listBottom,
-                inboxScroll, contentHeight);
+        PinGrid.renderScrollbar(guiGraphics, chatLeft + chatWidth - 4, listTop, chatBottom, chatScroll, content);
+    }
+
+    private void renderBubble(GuiGraphics guiGraphics, PinFriends.Message message, int y, int chatWidth,
+                              int mouseX, int mouseY) {
+        boolean outgoing = message.outgoing();
+        int bubbleWidth = message.pin() == null
+                ? Math.min(chatWidth - 20, font.width(bubbleText(message)) + 14)
+                : Math.min(chatWidth - 20, PIN_THUMB + 120);
+        int x = outgoing ? chatLeft + chatWidth - 10 - bubbleWidth : chatLeft + 4;
+        int bubbleHeight = message.pin() == null ? BUBBLE_HEIGHT : PIN_BUBBLE_HEIGHT;
+        boolean hovered = message.pin() != null && mouseX >= x && mouseX < x + bubbleWidth
+                && mouseY >= y && mouseY < y + bubbleHeight && mouseY >= listTop && mouseY < chatBottom;
+
+        PinTheme.roundedRect(guiGraphics, x, y, bubbleWidth, bubbleHeight,
+                outgoing ? PinTheme.ACCENT_DIM : PinTheme.CARD);
+        PinTheme.roundedOutline(guiGraphics, x, y, bubbleWidth, bubbleHeight,
+                hovered ? PinTheme.ACCENT : PinTheme.BORDER);
+
+        if (message.pin() == null) {
+            guiGraphics.drawString(font, font.plainSubstrByWidth(bubbleText(message), bubbleWidth - 10),
+                    x + 5, y + 4, PinTheme.TEXT, false);
+            return;
+        }
+        ThumbnailCache.Thumbnail thumbnail = ThumbnailCache.get(message.pin().thumbnailUrl());
+        if (thumbnail != null) {
+            guiGraphics.blit(RenderPipelines.GUI_TEXTURED, thumbnail.texture(), x + 2, y + 2, 0.0F, 0.0F,
+                    PIN_THUMB, PIN_THUMB, thumbnail.width(), thumbnail.height(),
+                    thumbnail.width(), thumbnail.height(), 0xFFFFFFFF);
+        }
+        guiGraphics.drawString(font, Component.translatable("screen.pinspo.reference"),
+                x + PIN_THUMB + 8, y + 8, PinTheme.TEXT, false);
+        guiGraphics.drawString(font, Component.translatable("screen.pinspo.click_to_pin"),
+                x + PIN_THUMB + 8, y + 22, hovered ? PinTheme.ACCENT : PinTheme.TEXT_MUTED, false);
+    }
+
+    private String bubbleText(PinFriends.Message message) {
+        return message.text().isBlank() ? " " : message.text();
+    }
+
+    private int contentHeight() {
+        int total = 0;
+        for (PinFriends.Message message : conversation) {
+            total += (message.pin() == null ? BUBBLE_HEIGHT : PIN_BUBBLE_HEIGHT) + 2;
+        }
+        return total;
     }
 
     @Override
@@ -199,48 +318,60 @@ public class PinFriendsScreen extends PinTabScreen {
         }
         if (event.x() >= MARGIN && event.x() < MARGIN + SIDEBAR_WIDTH
                 && event.y() >= listTop && event.y() < listBottom) {
-            int index = (int) ((event.y() - listTop) / ROW_HEIGHT);
+            int index = (int) ((event.y() - listTop) / FRIEND_ROW_HEIGHT);
             if (index >= 0 && index < friends.size()) {
                 if (event.button() == GLFW.GLFW_MOUSE_BUTTON_RIGHT) {
                     PinFriends.removeFriend(friends.get(index));
-                    rebuild();
+                    selected = null;
                 } else {
-                    sendToFriend(friends.get(index));
+                    selected = friends.get(index);
                 }
+                feedback = null;
+                rebuild();
             }
             return true;
         }
-        if (event.x() >= inboxLeft && event.y() >= listTop && event.y() < listBottom) {
-            int index = (int) ((event.y() - listTop + inboxScroll) / MESSAGE_HEIGHT);
-            if (index >= 0 && index < inbox.size()) {
-                PinterestApi.Pin pin = inbox.get(index).pin();
+        if (event.x() >= chatLeft && event.y() >= listTop && event.y() < chatBottom) {
+            PinFriends.Message message = messageAt(event.y());
+            if (message != null && message.pin() != null) {
                 if (event.button() == GLFW.GLFW_MOUSE_BUTTON_RIGHT) {
-                    minecraft.setScreen(new FolderPickerScreen(this, pin));
+                    minecraft.setScreen(new FolderPickerScreen(this, message.pin()));
                 } else {
-                    PinnedImage.pin(pin);
+                    PinnedImage.pin(message.pin());
                     onClose();
                 }
+                return true;
             }
-            return true;
         }
         return false;
     }
 
-    /** Copies a share code addressed to one friend, ready to paste to them. */
-    private void sendToFriend(String friend) {
-        if (PinHistory.entries().isEmpty()) {
-            feedback = Component.translatable("screen.pinspo.nothing_to_send");
-            return;
+    @Nullable
+    private PinFriends.Message messageAt(double mouseY) {
+        int y = listTop - (int) chatScroll;
+        for (PinFriends.Message message : conversation) {
+            int bubbleHeight = message.pin() == null ? BUBBLE_HEIGHT : PIN_BUBBLE_HEIGHT;
+            if (mouseY >= y && mouseY < y + bubbleHeight) {
+                return message;
+            }
+            y += bubbleHeight + 2;
         }
-        minecraft.keyboardHandler.setClipboard(
-                PinFriends.compose(friend, PinHistory.entries().getFirst()));
-        feedback = Component.translatable("screen.pinspo.send_to", friend);
+        return null;
+    }
+
+    @Override
+    public boolean keyPressed(KeyEvent event) {
+        if (event.key() == GLFW.GLFW_KEY_ENTER && messageBox != null && messageBox.isFocused()) {
+            sendMessage();
+            return true;
+        }
+        return super.keyPressed(event);
     }
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
-        if (mouseX >= inboxLeft) {
-            inboxScroll -= verticalAmount * MESSAGE_HEIGHT;
+        if (mouseX >= chatLeft) {
+            chatScroll -= verticalAmount * BUBBLE_HEIGHT * 2;
             return true;
         }
         return false;

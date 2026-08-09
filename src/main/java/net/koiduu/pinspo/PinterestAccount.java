@@ -4,7 +4,6 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
 import net.fabricmc.loader.api.FabricLoader;
-import org.cef.network.CefCookieManager;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
@@ -18,9 +17,9 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 /**
- * The signed-in Pinterest account. Logging in happens in the embedded browser on pinterest.com itself;
- * afterwards Chromium's session cookies are copied into {@link PinterestApi} so the native screens act
- * as that user, and stored so the login survives restarts.
+ * The signed-in Pinterest account. A session comes either from an email/password login or from cookies
+ * copied out of the player's own browser; it is handed to {@link PinterestApi} so the native screens act
+ * as that user, and stored so the login survives restarts. Passwords are never stored.
  */
 public final class PinterestAccount {
 
@@ -61,45 +60,12 @@ public final class PinterestAccount {
         }
     }
 
-    /**
-     * Copies the current Chromium cookies for pinterest.com into the API client. Called after the player
-     * closes the login browser.
-     *
-     * @return the signed-in username once it has been confirmed, or an empty string if not signed in
-     */
-    public static CompletableFuture<String> importFromBrowser() {
-        Map<String, String> collected = new LinkedHashMap<>();
-        try {
-            CefCookieManager.getGlobalManager().visitUrlCookies(
-                    "https://www.pinterest.com/", true,
-                    (cookie, count, total, delete) -> {
-                        for (String wanted : SESSION_COOKIES) {
-                            if (wanted.equals(cookie.name)) {
-                                collected.put(cookie.name, cookie.value);
-                            }
-                        }
-                        return true;
-                    });
-        } catch (Throwable e) {
-            PinSpoClient.LOGGER.warn("Could not read cookies from the embedded browser", e);
-            return CompletableFuture.completedFuture("");
+    /** The outcome of a sign-in attempt: the confirmed username, plus the HTTP status on failure. */
+    public record SignIn(String username, int status) {
+
+        public boolean success() {
+            return !username.isEmpty();
         }
-        // visitUrlCookies is asynchronous on the CEF IO thread, so give it a moment to deliver.
-        return CompletableFuture.supplyAsync(() -> {
-            try {
-                Thread.sleep(700L);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
-            if (!collected.containsKey("_pinterest_sess")) {
-                return "";
-            }
-            cookies = new LinkedHashMap<>(collected);
-            PinterestApi.setSessionCookies(cookies);
-            username = fetchUsername();
-            save();
-            return username;
-        });
     }
 
     /**
@@ -140,21 +106,20 @@ public final class PinterestAccount {
 
     /**
      * Signs in with an email/username and password. Pinterest frequently answers with a bot check, so a
-     * failure here is expected rather than exceptional; the browser flow is the fallback.
-     *
-     * @return the confirmed username, or an empty string when the login was not accepted
+     * failure here is expected rather than exceptional; the browser flow is the fallback. The password is
+     * only sent to pinterest.com and is never written to disk or logged.
      */
-    public static CompletableFuture<String> signInWithPassword(String emailOrUsername, String password) {
+    public static CompletableFuture<SignIn> signInWithPassword(String emailOrUsername, String password) {
         return CompletableFuture.supplyAsync(() -> {
             Map<String, String> previous = cookies;
-            Map<String, String> session = PinterestApi.logIn(emailOrUsername, password);
-            if (!session.containsKey("_pinterest_sess")) {
+            PinterestApi.LoginResult result = PinterestApi.logIn(emailOrUsername, password);
+            if (!result.accepted()) {
                 PinterestApi.setSessionCookies(previous);
-                return "";
+                return new SignIn("", result.status());
             }
             Map<String, String> wanted = new LinkedHashMap<>();
             for (String name : SESSION_COOKIES) {
-                String value = session.get(name);
+                String value = result.cookies().get(name);
                 if (value != null) {
                     wanted.put(name, value);
                 }
@@ -165,10 +130,10 @@ public final class PinterestAccount {
             if (username.isEmpty()) {
                 cookies = previous;
                 PinterestApi.setSessionCookies(cookies);
-                return "";
+                return new SignIn("", result.status());
             }
             save();
-            return username;
+            return new SignIn(username, result.status());
         });
     }
 
@@ -176,11 +141,6 @@ public final class PinterestAccount {
         cookies = new LinkedHashMap<>();
         username = "";
         PinterestApi.setSessionCookies(cookies);
-        try {
-            CefCookieManager.getGlobalManager().deleteCookies("https://www.pinterest.com/", "");
-        } catch (Throwable e) {
-            PinSpoClient.LOGGER.debug("Could not clear browser cookies", e);
-        }
         try {
             Files.deleteIfExists(PATH);
         } catch (IOException e) {

@@ -54,7 +54,8 @@ public class PinButton extends AbstractWidget {
             fill = !active ? 0xFF3A2026 : hovered ? PinTheme.ACCENT : PinTheme.ACCENT_DIM;
             border = active ? PinTheme.ACCENT : PinTheme.BORDER;
         } else if (selected) {
-            fill = PinTheme.CARD_HOVER;
+            // The current tab is filled with the accent instead of dimmed, so it reads as selected.
+            fill = hovered ? PinTheme.ACCENT : PinTheme.ACCENT_DIM;
             border = PinTheme.ACCENT;
         } else {
             fill = hovered ? PinTheme.CARD_HOVER : PinTheme.CARD;
@@ -64,10 +65,10 @@ public class PinButton extends AbstractWidget {
         PinTheme.roundedRect(guiGraphics, getX(), getY(), width, height, fill);
         PinTheme.roundedOutline(guiGraphics, getX(), getY(), width, height, border);
         if (style == Style.TAB && selected) {
-            guiGraphics.fill(getX() + 2, getY() + height - 2, getX() + width - 2, getY() + height, PinTheme.ACCENT);
+            guiGraphics.fill(getX() + 2, getY() + height, getX() + width - 2, getY() + height + 2, PinTheme.ACCENT);
         }
 
-        int color = !active ? PinTheme.TEXT_DISABLED : selected || hovered ? PinTheme.TEXT : PinTheme.TEXT_MUTED;
+        int color = !active ? PinTheme.TEXT_DISABLED : selected || hovered ? PinTheme.TEXT : PinTheme.TEXT_SOFT;
         var font = Minecraft.getInstance().font;
         guiGraphics.drawString(font, font.plainSubstrByWidth(getMessage().getString(), width - 6),
                 getX() + (width - Math.min(width - 6, font.width(getMessage()))) / 2,

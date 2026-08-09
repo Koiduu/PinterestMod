@@ -9,7 +9,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.function.DoubleConsumer;
 
-/** Settings tab: overlay appearance on the left, Build Battle and browser options on the right. */
+/** Settings tab: overlay appearance on the left, Build Battle options on the right. */
 public class PinSettingsScreen extends PinTabScreen {
 
     private static final int WIDGET_HEIGHT = 20;
@@ -36,9 +36,10 @@ public class PinSettingsScreen extends PinTabScreen {
     protected void init() {
         addTabs();
 
-        columnWidth = Math.min(210, (width - MARGIN * 3) / 2);
+        // Both panels have to fit the viewport, so the column width follows the window rather than a cap.
+        columnWidth = Math.max(90, Math.min(210, (width - MARGIN * 2 - 48) / 2));
         leftX = MARGIN + 8;
-        rightX = leftX + columnWidth + MARGIN + 8;
+        rightX = width - MARGIN - 8 - columnWidth;
         columnTop = CONTENT_TOP + 6;
 
         int y = columnTop + HEADER_HEIGHT;
@@ -101,24 +102,6 @@ public class PinSettingsScreen extends PinTabScreen {
                             config.buildBattleRandomPin = value;
                             config.save();
                         }));
-        y += WIDGET_HEIGHT + SPACING + HEADER_HEIGHT;
-        addRenderableWidget(CycleButton
-                .builder((Integer value) -> Component.literal(value + "p"),
-                        nearestQuality(config.maxBrowserWidth))
-                .withValues(640, 800, 960, 1280, 1600)
-                .create(rightX, y, columnWidth, WIDGET_HEIGHT,
-                        Component.translatable("option.pinspo.browser_quality"),
-                        (button, value) -> {
-                            config.maxBrowserWidth = value;
-                            config.save();
-                        }));
-        y += WIDGET_HEIGHT + SPACING;
-        addRenderableWidget(percentSlider(rightX, y, "option.pinspo.browser_window", config.browserWindowScale,
-                value -> config.browserWindowScale = (float) value));
-        y += WIDGET_HEIGHT + SPACING;
-        addRenderableWidget(PinButton.of(rightX, y, columnWidth, WIDGET_HEIGHT,
-                Component.translatable("option.pinspo.browse"),
-                () -> minecraft.setScreen(new PinterestBrowserScreen(this))));
     }
 
     private void rebuild() {
@@ -129,26 +112,14 @@ public class PinSettingsScreen extends PinTabScreen {
     @Override
     public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
         int bottom = height - FOOTER_HEIGHT - 6;
-        renderPanel(guiGraphics, MARGIN, CONTENT_TOP, MARGIN + columnWidth + 16, bottom);
-        renderPanel(guiGraphics, rightX - 8, CONTENT_TOP, rightX + columnWidth + 8, bottom);
+        renderPanel(guiGraphics, MARGIN, CONTENT_TOP, leftX + columnWidth + 8, bottom);
+        renderPanel(guiGraphics, rightX - 8, CONTENT_TOP, width - MARGIN, bottom);
         super.render(guiGraphics, mouseX, mouseY, partialTick);
 
-        guiGraphics.drawString(font, Component.translatable("screen.pinspo.section.overlay"),
-                leftX, columnTop, COLOR_MUTED, false);
-        guiGraphics.drawString(font, Component.translatable("screen.pinspo.section.build_battle"),
-                rightX, columnTop, COLOR_MUTED, false);
-        guiGraphics.drawString(font, Component.translatable("screen.pinspo.section.browser"),
-                rightX, columnTop + HEADER_HEIGHT + (WIDGET_HEIGHT + SPACING) * 2, COLOR_MUTED, false);
-    }
-
-    private static Integer nearestQuality(int width) {
-        int best = 960;
-        for (int candidate : new int[] {640, 800, 960, 1280, 1600}) {
-            if (Math.abs(candidate - width) < Math.abs(best - width)) {
-                best = candidate;
-            }
-        }
-        return best;
+        PinTheme.sectionHeader(guiGraphics, font,
+                Component.translatable("screen.pinspo.section.overlay"), leftX, columnTop);
+        PinTheme.sectionHeader(guiGraphics, font,
+                Component.translatable("screen.pinspo.section.build_battle"), rightX, columnTop);
     }
 
     private AbstractSliderButton percentSlider(int x, int y, String translationKey, float initialValue, DoubleConsumer setter) {

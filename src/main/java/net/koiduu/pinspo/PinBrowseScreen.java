@@ -49,7 +49,7 @@ public class PinBrowseScreen extends PinTabScreen {
     protected void init() {
         addTabs();
 
-        int searchWidth = Math.min(260, width - 230);
+        int searchWidth = Math.max(80, Math.min(300, width - MARGIN * 2 - 140));
         searchBox = new EditBox(font, MARGIN, CONTENT_TOP, searchWidth, 20,
                 Component.translatable("screen.pinspo.search"));
         searchBox.setHint(Component.translatable("screen.pinspo.search_hint"));
@@ -62,9 +62,6 @@ public class PinBrowseScreen extends PinTabScreen {
                 Component.translatable("screen.pinspo.search_button"), this::startSearch));
         addRenderableWidget(PinButton.of(MARGIN + searchWidth + 70, CONTENT_TOP, 60, 20,
                 Component.translatable("screen.pinspo.random"), this::pinRandom));
-        addRenderableWidget(PinButton.of(width - MARGIN - 70, CONTENT_TOP, 70, 20,
-                Component.translatable("screen.pinspo.full_browser"),
-                () -> minecraft.setScreen(new PinterestBrowserScreen(this))));
 
         grid.setBounds(MARGIN, CONTENT_TOP + 38, width - MARGIN, height - FOOTER_HEIGHT - 8);
         if (!query.isEmpty() && grid.pins().isEmpty()) {

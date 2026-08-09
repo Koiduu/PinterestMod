@@ -33,26 +33,10 @@ public class PinSpoConfig {
     public boolean preferOriginalResolution = false;
     /** Currently pinned image URL; re-pinned from the on-disk cache on startup. */
     public String pinnedUrl = "";
-    /**
-     * Chromium paints off-screen on the CPU, so its cost scales with pixel count: capping the render
-     * width and upscaling the result is by far the biggest performance lever.
-     */
-    public int maxBrowserWidth = 960;
-    /** Size of the browser window as a fraction of the screen; smaller means fewer pixels to paint. */
-    public float browserWindowScale = 0.7F;
-    /** Chromium off-screen frame rate. Lower is cheaper; 60 is smooth. */
-    public int browserFrameRate = 60;
-    /**
-     * Start Chromium in the background at game launch. Off by default now that the native search grid,
-     * not the embedded browser, is the normal way to find a reference.
-     */
-    public boolean preloadBrowser = false;
     /** Watch chat for Hypixel Build Battle themes and react to them automatically. */
     public boolean buildBattleMode = false;
     /** In Build Battle mode, pin a random matching image instead of opening the search screen. */
     public boolean buildBattleRandomPin = false;
-    /** Minutes of the browser being unused before it is disposed; 0 disables idle disposal. */
-    public int idleDisposeMinutes = 5;
 
     public static PinSpoConfig get() {
         if (instance == null) {
@@ -99,10 +83,10 @@ public class PinSpoConfig {
         offsetY = clamp01(offsetY);
         scale = Math.clamp(scale, 0.05F, 1.0F);
         opacity = Math.clamp(opacity, 0.05F, 1.0F);
-        idleDisposeMinutes = Math.clamp(idleDisposeMinutes, 0, 60);
-        maxBrowserWidth = Math.clamp(maxBrowserWidth, 640, 3840);
-        browserFrameRate = Math.clamp(browserFrameRate, 15, 120);
-        browserWindowScale = Math.clamp(browserWindowScale, 0.3F, 1.0F);
+        if (!pinnedUrl.isEmpty() && !PinSecurity.isAllowedImageUrl(pinnedUrl)) {
+            // A hand-edited config must not be able to point the overlay at an arbitrary address.
+            pinnedUrl = "";
+        }
     }
 
     private static float clamp01(float value) {

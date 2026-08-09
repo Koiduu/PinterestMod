@@ -7,16 +7,18 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.util.Util;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.concurrent.CompletableFuture;
-
 /**
- * Account tab, offering three ways in: email and password straight through the mod, logging in with the
- * player's own browser and pasting the session back, or the embedded browser.
+ * Account tab, offering two ways in: email and password straight through the mod, or logging in with the
+ * player's own browser and pasting the session back.
  */
 public class PinAccountScreen extends PinTabScreen {
 
     private static final String LOGIN_URL = "https://www.pinterest.com/login/";
+    private static final String COOKIE_HELP_URL = "https://www.pinterest.com/";
     private static final int WIDGET_WIDTH = 230;
+    private static final int ROW = 22;
+    private static final int SECTION_GAP = 16;
+    private static final int HEADER_HEIGHT = 14;
 
     @Nullable
     private EditBox emailBox;
@@ -28,6 +30,8 @@ public class PinAccountScreen extends PinTabScreen {
     private Component feedback;
     private int panelTop;
     private int panelHeight;
+    private int directHeaderY;
+    private int browserHeaderY;
 
     public PinAccountScreen(@Nullable Screen parent) {
         super(Component.translatable("screen.pinspo.account"), parent);
@@ -46,13 +50,16 @@ public class PinAccountScreen extends PinTabScreen {
         panelTop = CONTENT_TOP;
         boolean signedIn = PinterestAccount.isSignedIn();
 
-        // Section 1: straight through the mod.
-        int y = panelTop + 36;
+        // Every header claims its own row, so nothing is ever drawn on top of a widget.
+        int y = panelTop + 8 + HEADER_HEIGHT;
+        directHeaderY = y;
+        y += HEADER_HEIGHT;
+
         emailBox = new EditBox(font, x, y, WIDGET_WIDTH, 18, Component.translatable("screen.pinspo.email"));
         emailBox.setHint(Component.translatable("screen.pinspo.email_hint"));
         emailBox.setMaxLength(128);
         addRenderableWidget(emailBox);
-        y += 22;
+        y += ROW;
 
         passwordBox = new EditBox(font, x, y, WIDGET_WIDTH, 18, Component.translatable("screen.pinspo.password"));
         passwordBox.setHint(Component.translatable("screen.pinspo.password_hint"));
@@ -60,32 +67,32 @@ public class PinAccountScreen extends PinTabScreen {
         passwordBox.addFormatter((value, offset) ->
                 Component.literal("*".repeat(value.length())).getVisualOrderText());
         addRenderableWidget(passwordBox);
-        y += 22;
+        y += ROW;
 
         addRenderableWidget(PinButton.primary(x, y, WIDGET_WIDTH, 20,
                 Component.translatable("screen.pinspo.sign_in_password"), this::signInWithPassword));
+        y += 20 + SECTION_GAP;
 
-        // Section 2: own browser plus pasted session.
-        y += 42;
+        browserHeaderY = y;
+        y += HEADER_HEIGHT;
         addRenderableWidget(PinButton.of(x, y, WIDGET_WIDTH, 20,
                 Component.translatable("screen.pinspo.sign_in_external"),
                 () -> Util.getPlatform().openUri(LOGIN_URL)));
-        y += 22;
+        y += ROW;
 
         sessionBox = new EditBox(font, x, y, WIDGET_WIDTH - 62, 18,
                 Component.translatable("screen.pinspo.session"));
         sessionBox.setHint(Component.translatable("screen.pinspo.session_hint"));
         sessionBox.setMaxLength(4096);
         addRenderableWidget(sessionBox);
-        addRenderableWidget(PinButton.of(x + WIDGET_WIDTH - 58, y, 58, 18,
+        addRenderableWidget(PinButton.primary(x + WIDGET_WIDTH - 58, y, 58, 18,
                 Component.translatable("screen.pinspo.paste_sign_in"), this::signInWithPastedSession));
+        y += ROW;
 
-        // Section 3: embedded browser and sign out.
-        y += 40;
         addRenderableWidget(PinButton.of(x, y, WIDGET_WIDTH, 20,
-                Component.translatable(signedIn ? "screen.pinspo.switch_account" : "screen.pinspo.sign_in"),
-                () -> signInWithEmbeddedBrowser(signedIn)));
-        y += 22;
+                Component.translatable("screen.pinspo.cookie_help"),
+                () -> Util.getPlatform().openUri(COOKIE_HELP_URL)));
+        y += 20 + SECTION_GAP;
 
         PinButton signOut = PinButton.of(x, y, WIDGET_WIDTH, 20,
                 Component.translatable("screen.pinspo.sign_out"), () -> {
@@ -95,7 +102,7 @@ public class PinAccountScreen extends PinTabScreen {
                 });
         signOut.active = signedIn;
         addRenderableWidget(signOut);
-        panelHeight = y + 20 + 12 - panelTop;
+        panelHeight = y + 20 + 10 - panelTop;
     }
 
     private void signInWithPassword() {
@@ -105,36 +112,52 @@ public class PinAccountScreen extends PinTabScreen {
             return;
         }
         feedback = Component.translatable("screen.pinspo.signing_in");
-        finish(PinterestAccount.signInWithPassword(emailBox.getValue(), passwordBox.getValue()),
-                Component.translatable("screen.pinspo.password_failed"));
+        PinterestAccount.signInWithPassword(emailBox.getValue(), passwordBox.getValue())
+                .whenComplete((result, throwable) -> minecraft.execute(() -> {
+                    if (throwable != null || result == null) {
+                        feedback = Component.translatable("screen.pinspo.password_failed");
+                        return;
+                    }
+                    if (result.success()) {
+                        if (passwordBox != null) {
+                            passwordBox.setValue("");
+                        }
+                        feedback = null;
+                        rebuild();
+                        return;
+                    }
+                    feedback = failureReason(result.status());
+                }));
+    }
+
+    /** Turns the HTTP status Pinterest answered with into something the player can act on. */
+    private static Component failureReason(int status) {
+        return switch (status) {
+            case 429 -> Component.translatable("screen.pinspo.login_rate_limited");
+            case 401, 403 -> Component.translatable("screen.pinspo.login_bot_check");
+            case 0 -> Component.translatable("screen.pinspo.login_offline");
+            default -> Component.translatable("screen.pinspo.password_failed");
+        };
     }
 
     private void signInWithPastedSession() {
         if (sessionBox == null || sessionBox.getValue().isBlank()) {
+            feedback = Component.translatable("screen.pinspo.need_session");
             return;
         }
         feedback = Component.translatable("screen.pinspo.signing_in");
-        finish(PinterestAccount.signInWithCookies(sessionBox.getValue()),
-                Component.translatable("screen.pinspo.sign_in_failed"));
-    }
-
-    /** Clears the credential fields and rebuilds on success, or shows {@code failure}. */
-    private void finish(CompletableFuture<String> attempt, Component failure) {
-        attempt.whenComplete((name, throwable) -> minecraft.execute(() -> {
-            if (throwable != null || name == null || name.isEmpty()) {
-                feedback = failure;
-                return;
-            }
-            feedback = null;
-            rebuild();
-        }));
-    }
-
-    private void signInWithEmbeddedBrowser(boolean signedIn) {
-        if (signedIn) {
-            PinterestAccount.signOut();
-        }
-        minecraft.setScreen(new PinterestBrowserScreen(new PinAccountScreen(parent), LOGIN_URL, true));
+        PinterestAccount.signInWithCookies(sessionBox.getValue())
+                .whenComplete((name, throwable) -> minecraft.execute(() -> {
+                    if (throwable != null || name == null || name.isEmpty()) {
+                        feedback = Component.translatable("screen.pinspo.sign_in_failed");
+                        return;
+                    }
+                    if (sessionBox != null) {
+                        sessionBox.setValue("");
+                    }
+                    feedback = null;
+                    rebuild();
+                }));
     }
 
     private void rebuild() {
@@ -157,15 +180,13 @@ public class PinAccountScreen extends PinTabScreen {
         guiGraphics.drawString(font, status, x, panelTop + 8, PinTheme.ACCENT, false);
 
         PinTheme.sectionHeader(guiGraphics, font,
-                Component.translatable("screen.pinspo.section.direct"), x, panelTop + 22);
+                Component.translatable("screen.pinspo.section.direct"), x, directHeaderY);
         PinTheme.sectionHeader(guiGraphics, font,
-                Component.translatable("screen.pinspo.section.own_browser"), x, panelTop + 128);
-        PinTheme.sectionHeader(guiGraphics, font,
-                Component.translatable("screen.pinspo.section.embedded"), x, panelTop + 212);
+                Component.translatable("screen.pinspo.section.own_browser"), x, browserHeaderY);
 
         Component hint = feedback != null ? feedback : Component.translatable("screen.pinspo.account_hint");
         guiGraphics.drawString(font, font.plainSubstrByWidth(hint.getString(), width - MARGIN * 2),
                 MARGIN, height - FOOTER_HEIGHT + 12,
-                feedback != null ? 0xFFE0A0A0 : PinTheme.TEXT_MUTED, false);
+                feedback != null ? PinTheme.ACCENT : PinTheme.TEXT_MUTED, false);
     }
 }

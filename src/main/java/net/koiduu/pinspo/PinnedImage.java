@@ -113,6 +113,10 @@ public final class PinnedImage {
 
     @Nullable
     private static NativeImage download(String url) {
+        if (!PinSecurity.isAllowedImageUrl(url) && !isPinPageUrl(url)) {
+            PinSpoClient.LOGGER.warn("Refusing to pin an address that is not a Pinterest image or pin page");
+            return null;
+        }
         Path cacheFile = CACHE_DIR.resolve(cacheName(url));
         if (Files.isRegularFile(cacheFile)) {
             try {
@@ -127,7 +131,7 @@ public final class PinnedImage {
         }
 
         String imageUrl = isPinPageUrl(url) ? scrapeImageUrl(url) : url;
-        if (imageUrl == null) {
+        if (imageUrl == null || !PinSecurity.isAllowedImageUrl(imageUrl)) {
             return null;
         }
 
@@ -177,8 +181,19 @@ public final class PinnedImage {
         return resized;
     }
 
+    /** A pin page whose image has to be scraped out; only Pinterest's own domains qualify. */
     private static boolean isPinPageUrl(String url) {
-        return url.contains("pinterest.") || url.contains("pin.it/");
+        try {
+            URI uri = URI.create(url);
+            String host = uri.getHost();
+            if (!"https".equalsIgnoreCase(uri.getScheme()) || host == null) {
+                return false;
+            }
+            host = host.toLowerCase();
+            return host.equals("pin.it") || host.equals("pinterest.com") || host.endsWith(".pinterest.com");
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     /** Falls back to scraping the pin page for the highest-resolution {@code i.pinimg.com} URL it lists. */

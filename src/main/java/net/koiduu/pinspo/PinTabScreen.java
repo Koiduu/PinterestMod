@@ -33,8 +33,10 @@ public abstract class PinTabScreen extends Screen {
 
     /** Adds the tab bar and the Done button; subclasses call this from {@code init}. */
     protected void addTabs() {
-        int tabWidth = Math.min(76, (width - MARGIN * 2 - 60) / Tab.values().length - 2);
-        int x = MARGIN + 58;
+        int labelWidth = MARGIN + 58;
+        int tabWidth = Math.max(38,
+                Math.min(76, (width - labelWidth - MARGIN) / Tab.values().length - 2));
+        int x = labelWidth;
         for (Tab value : Tab.values()) {
             PinButton button = new PinButton(x, 6, tabWidth, TAB_HEIGHT,
                     Component.translatable("tab.pinspo." + value.name().toLowerCase()),

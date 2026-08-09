@@ -49,24 +49,19 @@ public class PinSpoClient implements ClientModInitializer {
         ClientReceiveMessageEvents.GAME.register((message, overlay) -> {
             if (!overlay) {
                 BuildBattleMode.onChatMessage(message);
+                PinChat.onChatMessage(message);
             }
         });
-        ClientReceiveMessageEvents.CHAT.register((message, signedMessage, sender, params, timestamp) ->
-                BuildBattleMode.onChatMessage(message));
+        ClientReceiveMessageEvents.CHAT.register((message, signedMessage, sender, params, timestamp) -> {
+            BuildBattleMode.onChatMessage(message);
+            PinChat.onChatMessage(message);
+        });
 
-        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
-            BrowserHolder.dispose();
-            BuildBattleMode.reset();
-        });
-        ClientLifecycleEvents.CLIENT_STOPPING.register(client -> {
-            BrowserHolder.dispose();
-            PinnedImage.clear();
-        });
+        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> BuildBattleMode.reset());
+        ClientLifecycleEvents.CLIENT_STOPPING.register(client -> PinnedImage.clear());
     }
 
     private static void onEndTick(Minecraft client) {
-        BrowserHolder.tick();
-
         while (OPEN_KEY.consumeClick()) {
             if (client.screen != null) {
                 continue;

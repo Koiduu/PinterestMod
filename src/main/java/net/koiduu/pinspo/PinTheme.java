@@ -8,6 +8,8 @@ public final class PinTheme {
     public static final int ACCENT = 0xFFE60023;
     public static final int ACCENT_DIM = 0xFF8C1020;
     public static final int TEXT = 0xFFF2F2F5;
+    /** Default label colour: readable without competing with a selected or hovered element. */
+    public static final int TEXT_SOFT = 0xFFD8DBE1;
     public static final int TEXT_MUTED = 0xFF9BA0A8;
     public static final int TEXT_DISABLED = 0xFF6A6E75;
 

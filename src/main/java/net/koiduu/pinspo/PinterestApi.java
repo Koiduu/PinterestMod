@@ -95,14 +95,31 @@ public final class PinterestApi {
     }
 
     /**
-     * Logs in with an email/username and password against the same endpoint pinterest.com's login form
-     * posts to. Pinterest often answers with a bot check instead, in which case this fails and the
-     * browser flow has to be used.
-     *
-     * @return the resulting session cookies, or an empty map when the login was not accepted
+     * The outcome of a login attempt: the HTTP status Pinterest answered with (0 when the request never
+     * got that far) and the resulting cookies.
      */
-    public static Map<String, String> logIn(String emailOrUsername, String password) {
+    public record LoginResult(int status, Map<String, String> cookies) {
+
+        public boolean accepted() {
+            return cookies.containsKey("_pinterest_sess");
+        }
+    }
+
+    /**
+     * Logs in with an email/username and password against the same endpoint pinterest.com's login form
+     * posts to. Pinterest often answers with a bot check instead (typically HTTP 429), in which case the
+     * browser flow has to be used.
+     */
+    public static LoginResult logIn(String emailOrUsername, String password) {
         try {
+            // The login POST is only accepted with a csrftoken cookie, which the login page hands out.
+            client().send(HttpRequest.newBuilder(URI.create("https://www.pinterest.com/login/"))
+                            .timeout(Duration.ofSeconds(15))
+                            .header("User-Agent", USER_AGENT)
+                            .GET()
+                            .build(),
+                    HttpResponse.BodyHandlers.discarding());
+
             JsonObject options = new JsonObject();
             options.addProperty("username_or_email", emailOrUsername);
             options.addProperty("password", password);
@@ -120,12 +137,12 @@ public final class PinterestApi {
             HttpResponse<String> response = client().send(request, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() / 100 != 2) {
                 PinSpoClient.LOGGER.warn("Pinterest rejected the login with HTTP {}", response.statusCode());
-                return Map.of();
+                return new LoginResult(response.statusCode(), Map.of());
             }
-            return sessionCookies();
+            return new LoginResult(response.statusCode(), sessionCookies());
         } catch (Exception e) {
-            PinSpoClient.LOGGER.warn("Pinterest login failed", e);
-            return Map.of();
+            PinSpoClient.LOGGER.warn("Pinterest login failed: {}", e.toString());
+            return new LoginResult(0, Map.of());
         }
     }
 
