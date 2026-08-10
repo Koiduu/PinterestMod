@@ -75,8 +75,10 @@ public final class PinterestAccount {
      * @return the confirmed username, or an empty string if Pinterest rejected the session
      */
     public static CompletableFuture<String> signInWithCookies(String raw) {
+        // A console-copied document.cookie arrives wrapped in quotes.
+        String cookieHeader = raw.trim().replaceAll("^['\"]|['\"]$", "");
         Map<String, String> parsed = new LinkedHashMap<>();
-        for (String part : raw.trim().split(";")) {
+        for (String part : cookieHeader.split(";")) {
             String piece = part.trim();
             int equals = piece.indexOf('=');
             if (equals > 0) {

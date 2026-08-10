@@ -21,6 +21,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Talks to the same JSON search endpoint pinterest.com's own web app uses, so pins can be browsed in a
@@ -32,6 +34,7 @@ public final class PinterestApi {
     private static final String USER_AGENT =
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36";
     private static final int PAGE_SIZE = 25;
+    private static final Pattern APP_VERSION = Pattern.compile("\"app_version\"\\s*:\\s*\"([0-9a-f]{5,12})\"");
 
     @Nullable
     private static HttpClient httpClient;
@@ -113,12 +116,14 @@ public final class PinterestApi {
     public static LoginResult logIn(String emailOrUsername, String password) {
         try {
             // The login POST is only accepted with a csrftoken cookie, which the login page hands out.
-            client().send(HttpRequest.newBuilder(URI.create("https://www.pinterest.com/login/"))
+            HttpResponse<String> loginPage = client().send(
+                    HttpRequest.newBuilder(URI.create("https://www.pinterest.com/login/"))
                             .timeout(Duration.ofSeconds(15))
                             .header("User-Agent", USER_AGENT)
                             .GET()
                             .build(),
-                    HttpResponse.BodyHandlers.discarding());
+                    HttpResponse.BodyHandlers.ofString());
+            String appVersion = appVersion(loginPage.body());
 
             JsonObject options = new JsonObject();
             options.addProperty("username_or_email", emailOrUsername);
@@ -132,6 +137,8 @@ public final class PinterestApi {
                     URI.create("https://www.pinterest.com/resource/UserSessionResource/create/"), "/login/")
                     .header("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8")
                     .header("X-Pinterest-PWS-Handler", "www/login.js")
+                    .header("X-Pinterest-Source-Url", "/login/")
+                    .header("X-APP-VERSION", appVersion)
                     .POST(HttpRequest.BodyPublishers.ofString(body))
                     .build();
             HttpResponse<String> response = client().send(request, HttpResponse.BodyHandlers.ofString());
@@ -144,6 +151,15 @@ public final class PinterestApi {
             PinSpoClient.LOGGER.warn("Pinterest login failed: {}", e.toString());
             return new LoginResult(0, Map.of());
         }
+    }
+
+    /**
+     * The build hash pinterest.com's own web app sends as {@code X-APP-VERSION}; the login endpoint is
+     * more willing to answer a request that carries the current one.
+     */
+    private static String appVersion(String loginPageHtml) {
+        Matcher matcher = APP_VERSION.matcher(loginPageHtml);
+        return matcher.find() ? matcher.group(1) : "";
     }
 
     /** The cookies currently held for pinterest.com, so a successful login can be persisted. */
