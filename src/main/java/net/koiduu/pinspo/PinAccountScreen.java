@@ -3,6 +3,7 @@ package net.koiduu.pinspo;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.input.KeyEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.Util;
 import org.jetbrains.annotations.Nullable;
@@ -32,6 +33,8 @@ public class PinAccountScreen extends PinTabScreen {
     private int directHeaderY;
     private int browserHeaderY;
     private int stepsY;
+    private int oneClickHeaderY;
+    private int oneClickHintY;
 
     public PinAccountScreen(@Nullable Screen parent) {
         super(Component.translatable("screen.pinspo.account"), parent);
@@ -49,9 +52,19 @@ public class PinAccountScreen extends PinTabScreen {
         int x = (width - WIDGET_WIDTH) / 2;
         panelTop = CONTENT_TOP;
         boolean signedIn = PinterestAccount.isSignedIn();
+        // On short windows the sections sit closer together rather than running off the screen.
+        int gap = height < 360 ? 6 : SECTION_GAP;
 
         // Every header claims its own row, so nothing is ever drawn on top of a widget.
         int y = panelTop + 8 + HEADER_HEIGHT;
+        oneClickHeaderY = y;
+        y += HEADER_HEIGHT;
+        addRenderableWidget(PinButton.primary(x, y, WIDGET_WIDTH, 20,
+                Component.translatable("screen.pinspo.one_click"), this::startOneClickLogin));
+        y += 20;
+        oneClickHintY = y;
+        y += HEADER_HEIGHT + gap;
+
         directHeaderY = y;
         y += HEADER_HEIGHT;
 
@@ -71,7 +84,7 @@ public class PinAccountScreen extends PinTabScreen {
 
         addRenderableWidget(PinButton.primary(x, y, WIDGET_WIDTH, 20,
                 Component.translatable("screen.pinspo.sign_in_password"), this::signInWithPassword));
-        y += 20 + SECTION_GAP;
+        y += 20 + gap;
 
         browserHeaderY = y;
         y += HEADER_HEIGHT;
@@ -79,9 +92,6 @@ public class PinAccountScreen extends PinTabScreen {
                 Component.translatable("screen.pinspo.sign_in_external"),
                 () -> Util.getPlatform().openUri(LOGIN_URL)));
         y += ROW;
-
-        stepsY = y;
-        y += HEADER_HEIGHT * 3 + 2;
 
         sessionBox = new EditBox(font, x, y, WIDGET_WIDTH - 62, 18,
                 Component.translatable("screen.pinspo.session"));
@@ -92,9 +102,8 @@ public class PinAccountScreen extends PinTabScreen {
                 Component.translatable("screen.pinspo.paste"), this::pasteSession));
         y += ROW;
 
-        addRenderableWidget(PinButton.primary(x, y, WIDGET_WIDTH, 20,
-                Component.translatable("screen.pinspo.paste_sign_in"), this::signInWithPastedSession));
-        y += 20 + SECTION_GAP;
+        stepsY = y;
+        y += HEADER_HEIGHT + gap;
 
         PinButton signOut = PinButton.of(x, y, WIDGET_WIDTH, 20,
                 Component.translatable("screen.pinspo.sign_out"), () -> {
@@ -142,6 +151,29 @@ public class PinAccountScreen extends PinTabScreen {
         };
     }
 
+    /**
+     * Opens the local setup page that hands out the PinSpo bookmarklet, and signs in as soon as the
+     * browser posts the session back.
+     */
+    private void startOneClickLogin() {
+        String url = PinLoginServer.start(cookieHeader -> PinterestAccount.signInWithCookies(cookieHeader)
+                .whenComplete((name, throwable) -> minecraft.execute(() -> {
+                    PinLoginServer.stop();
+                    if (throwable != null || name == null || name.isEmpty()) {
+                        feedback = Component.translatable("screen.pinspo.sign_in_failed");
+                        return;
+                    }
+                    feedback = null;
+                    rebuild();
+                })));
+        if (url == null) {
+            feedback = Component.translatable("screen.pinspo.helper_failed");
+            return;
+        }
+        Util.getPlatform().openUri(url);
+        feedback = Component.translatable("screen.pinspo.waiting_browser");
+    }
+
     /** Fills the session field straight from the clipboard, so nothing has to be retyped. */
     private void pasteSession() {
         if (sessionBox == null) {
@@ -177,6 +209,19 @@ public class PinAccountScreen extends PinTabScreen {
                 }));
     }
 
+    @Override
+    public boolean keyPressed(KeyEvent event) {
+        if (event.isConfirmation() && sessionBox != null && sessionBox.isFocused()) {
+            signInWithPastedSession();
+            return true;
+        }
+        if (event.isConfirmation() && passwordBox != null && passwordBox.isFocused()) {
+            signInWithPassword();
+            return true;
+        }
+        return super.keyPressed(event);
+    }
+
     private void rebuild() {
         clearWidgets();
         init();
@@ -197,17 +242,24 @@ public class PinAccountScreen extends PinTabScreen {
         guiGraphics.drawString(font, status, x, panelTop + 8, PinTheme.ACCENT, false);
 
         PinTheme.sectionHeader(guiGraphics, font,
+                Component.translatable("screen.pinspo.section.one_click"), x, oneClickHeaderY);
+        guiGraphics.drawString(font,
+                font.plainSubstrByWidth(
+                        Component.translatable(PinLoginServer.isRunning()
+                                ? "screen.pinspo.one_click_waiting"
+                                : "screen.pinspo.one_click_hint").getString(),
+                        WIDGET_WIDTH),
+                x, oneClickHintY, PinTheme.TEXT_MUTED, false);
+
+        PinTheme.sectionHeader(guiGraphics, font,
                 Component.translatable("screen.pinspo.section.direct"), x, directHeaderY);
         PinTheme.sectionHeader(guiGraphics, font,
                 Component.translatable("screen.pinspo.section.own_browser"), x, browserHeaderY);
 
-        for (int step = 1; step <= 3; step++) {
-            guiGraphics.drawString(font,
-                    font.plainSubstrByWidth(
-                            Component.translatable("screen.pinspo.session_step_" + step).getString(),
-                            WIDGET_WIDTH),
-                    x, stepsY + (step - 1) * HEADER_HEIGHT, PinTheme.TEXT_MUTED, false);
-        }
+        guiGraphics.drawString(font,
+                font.plainSubstrByWidth(
+                        Component.translatable("screen.pinspo.session_hint_line").getString(), WIDGET_WIDTH),
+                x, stepsY, PinTheme.TEXT_MUTED, false);
 
         Component hint = feedback != null ? feedback : Component.translatable("screen.pinspo.account_hint");
         guiGraphics.drawString(font, font.plainSubstrByWidth(hint.getString(), width - MARGIN * 2),

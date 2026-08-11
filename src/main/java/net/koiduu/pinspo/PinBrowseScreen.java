@@ -158,7 +158,7 @@ public class PinBrowseScreen extends PinTabScreen {
             return false;
         }
         if (event.button() == GLFW.GLFW_MOUSE_BUTTON_RIGHT) {
-            minecraft.setScreen(new FolderPickerScreen(this, pin));
+            minecraft.setScreen(new PinActionScreen(this, pin));
             return true;
         }
         PinnedImage.pin(pin);

@@ -202,7 +202,7 @@ public class SavedPinsScreen extends PinTabScreen {
         }
         if (event.button() == GLFW.GLFW_MOUSE_BUTTON_RIGHT) {
             if (isRecent()) {
-                minecraft.setScreen(new FolderPickerScreen(this, pin));
+                minecraft.setScreen(new PinActionScreen(this, pin));
                 return true;
             }
             SavedPins.remove(folder, pin);

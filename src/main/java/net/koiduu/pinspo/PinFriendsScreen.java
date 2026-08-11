@@ -335,7 +335,7 @@ public class PinFriendsScreen extends PinTabScreen {
             PinFriends.Message message = messageAt(event.y());
             if (message != null && message.pin() != null) {
                 if (event.button() == GLFW.GLFW_MOUSE_BUTTON_RIGHT) {
-                    minecraft.setScreen(new FolderPickerScreen(this, message.pin()));
+                    minecraft.setScreen(new PinActionScreen(this, message.pin()));
                 } else {
                     PinnedImage.pin(message.pin());
                     onClose();
