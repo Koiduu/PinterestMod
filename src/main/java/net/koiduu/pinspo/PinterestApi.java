@@ -7,8 +7,8 @@ import com.google.gson.JsonParser;
 import org.jetbrains.annotations.Nullable;
 
 import java.net.CookieManager;
-import java.net.CookiePolicy;
 import java.net.HttpCookie;
+import java.net.CookiePolicy;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.net.http.HttpClient;
@@ -19,9 +19,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
@@ -34,7 +32,6 @@ public final class PinterestApi {
     private static final String USER_AGENT =
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36";
     private static final int PAGE_SIZE = 25;
-    private static final Pattern APP_VERSION = Pattern.compile("\"app_version\"\\s*:\\s*\"([0-9a-f]{5,12})\"");
 
     @Nullable
     private static HttpClient httpClient;
@@ -53,124 +50,6 @@ public final class PinterestApi {
      * @param imageUrl     full-resolution image used for the pinned overlay
      */
     public record Pin(String id, String title, String thumbnailUrl, String imageUrl, int width, int height) {
-    }
-
-    /** Installs the signed-in player's Pinterest cookies so later requests act as that account. */
-    public static void setSessionCookies(Map<String, String> sessionCookies) {
-        client();
-        CookieManager manager = cookies;
-        if (manager == null) {
-            return;
-        }
-        manager.getCookieStore().removeAll();
-        sessionCookies.forEach((name, value) -> {
-            HttpCookie cookie = new HttpCookie(name, value);
-            cookie.setDomain(PinterestAccount.cookieDomain());
-            cookie.setPath("/");
-            cookie.setVersion(0);
-            manager.getCookieStore().add(URI.create("https://www.pinterest.com"), cookie);
-        });
-    }
-
-    /** Returns the signed-in user object, or {@code null} when the session is anonymous or invalid. */
-    @Nullable
-    public static JsonObject currentUser() {
-        try {
-            JsonObject data = new JsonObject();
-            data.add("options", new JsonObject());
-            data.add("context", new JsonObject());
-            URI uri = URI.create("https://www.pinterest.com/resource/UserSessionResource/get/"
-                    + "?source_url=" + encode("/") + "&data=" + encode(data.toString()));
-            HttpResponse<String> response = client().send(
-                    requestBuilder(uri, "/").build(), HttpResponse.BodyHandlers.ofString());
-            if (response.statusCode() / 100 != 2) {
-                return null;
-            }
-            JsonElement user = JsonParser.parseString(response.body())
-                    .getAsJsonObject().getAsJsonObject("resource_response").get("data");
-            return user != null && user.isJsonObject() && user.getAsJsonObject().has("username")
-                    ? user.getAsJsonObject()
-                    : null;
-        } catch (Exception e) {
-            PinSpoClient.LOGGER.warn("Could not read the Pinterest user session", e);
-            return null;
-        }
-    }
-
-    /**
-     * The outcome of a login attempt: the HTTP status Pinterest answered with (0 when the request never
-     * got that far) and the resulting cookies.
-     */
-    public record LoginResult(int status, Map<String, String> cookies) {
-
-        public boolean accepted() {
-            return cookies.containsKey("_pinterest_sess");
-        }
-    }
-
-    /**
-     * Logs in with an email/username and password against the same endpoint pinterest.com's login form
-     * posts to. Pinterest often answers with a bot check instead (typically HTTP 429), in which case the
-     * browser flow has to be used.
-     */
-    public static LoginResult logIn(String emailOrUsername, String password) {
-        try {
-            // The login POST is only accepted with a csrftoken cookie, which the login page hands out.
-            HttpResponse<String> loginPage = client().send(
-                    HttpRequest.newBuilder(URI.create("https://www.pinterest.com/login/"))
-                            .timeout(Duration.ofSeconds(15))
-                            .header("User-Agent", USER_AGENT)
-                            .GET()
-                            .build(),
-                    HttpResponse.BodyHandlers.ofString());
-            String appVersion = appVersion(loginPage.body());
-
-            JsonObject options = new JsonObject();
-            options.addProperty("username_or_email", emailOrUsername);
-            options.addProperty("password", password);
-            JsonObject data = new JsonObject();
-            data.add("options", options);
-            data.add("context", new JsonObject());
-
-            String body = "source_url=" + encode("/login/") + "&data=" + encode(data.toString());
-            HttpRequest request = requestBuilder(
-                    URI.create("https://www.pinterest.com/resource/UserSessionResource/create/"), "/login/")
-                    .header("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8")
-                    .header("X-Pinterest-PWS-Handler", "www/login.js")
-                    .header("X-Pinterest-Source-Url", "/login/")
-                    .header("X-APP-VERSION", appVersion)
-                    .POST(HttpRequest.BodyPublishers.ofString(body))
-                    .build();
-            HttpResponse<String> response = client().send(request, HttpResponse.BodyHandlers.ofString());
-            if (response.statusCode() / 100 != 2) {
-                PinSpoClient.LOGGER.warn("Pinterest rejected the login with HTTP {}", response.statusCode());
-                return new LoginResult(response.statusCode(), Map.of());
-            }
-            return new LoginResult(response.statusCode(), sessionCookies());
-        } catch (Exception e) {
-            PinSpoClient.LOGGER.warn("Pinterest login failed: {}", e.toString());
-            return new LoginResult(0, Map.of());
-        }
-    }
-
-    /**
-     * The build hash pinterest.com's own web app sends as {@code X-APP-VERSION}; the login endpoint is
-     * more willing to answer a request that carries the current one.
-     */
-    private static String appVersion(String loginPageHtml) {
-        Matcher matcher = APP_VERSION.matcher(loginPageHtml);
-        return matcher.find() ? matcher.group(1) : "";
-    }
-
-    /** The cookies currently held for pinterest.com, so a successful login can be persisted. */
-    public static Map<String, String> sessionCookies() {
-        Map<String, String> collected = new LinkedHashMap<>();
-        if (cookies != null) {
-            for (HttpCookie cookie : cookies.getCookieStore().getCookies()) {
-                collected.put(cookie.getName(), cookie.getValue());
-            }
-        }
-        return collected;
     }
 
     public static CompletableFuture<Page> search(String query, @Nullable String bookmark) {

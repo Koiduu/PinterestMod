@@ -14,16 +14,11 @@ runtime — just Pinterest's own image library drawn as plain textures.
 - **Friends** is a chat: add a friend by Minecraft name and send them a reference. Messages travel as
   Minecraft private messages (`/msg`), so the reference arrives in their PinSpo and one click puts it on
   their screen. On servers that block `/msg`, **Copy code** / **Paste code** does the same by hand.
-- **Account** offers three ways in, easiest first:
-  1. **One-click login** — opens a local setup page holding a *Log into PinSpo* bookmarklet. Drag it to
-     your bookmarks bar once; from then on, clicking it while logged into pinterest.com signs Minecraft in.
-     Works in any browser.
-  2. Email and password straight through the mod. Pinterest usually answers this with a bot check
-     (HTTP 429), so treat it as a long shot.
-  3. Logging in with your own browser and pasting the cookie into the session field.
-
-  Searching and pinning work fine without logging in at all; a session only adds your own boards.
+- **Settings** holds the overlay controls and the Build Battle toggles.
 - **Escape** — closes the current screen without changing the pin.
+
+There is no account or login: search runs against Pinterest's public search endpoint, so everything works
+straight away.
 
 Settings (opacity, size, screen corner, offsets, original-resolution preference, Build Battle mode) are
 stored in `config/pinspo.json`. The pinned image itself survives restarts too: its bytes are cached under
@@ -45,10 +40,8 @@ The mod jar is written to `build/libs/`.
 ## Notes
 
 - The overlay is purely visual and click-through; only one image can be pinned at a time.
-- The one-click login helper (`PinLoginServer`) binds to `127.0.0.1` on an ephemeral port, only answers
-  requests carrying a random per-run token, and shuts down once a session arrives or after 15 minutes. The
-  bookmarklet navigates to it rather than fetching, because pinterest.com's CSP forbids page requests to
-  localhost.
+- Search uses an internal Pinterest endpoint, so a Pinterest-side change could break it; nothing else in
+  the mod depends on it.
 - Everything that arrives from outside the game — share codes, chat messages, pin URLs, folder and friend
   names, hand-edited config files — goes through `PinSecurity` first: images may only ever be downloaded
   from Pinterest's own CDN, names cannot contain path separators or formatting codes, friend names must

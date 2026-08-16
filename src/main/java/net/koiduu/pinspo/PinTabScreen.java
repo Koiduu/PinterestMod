@@ -18,7 +18,7 @@ public abstract class PinTabScreen extends Screen {
     protected static final int COLOR_MUTED = PinTheme.TEXT_MUTED;
 
     public enum Tab {
-        SEARCH, SAVED, FRIENDS, ACCOUNT, SETTINGS
+        SEARCH, SAVED, FRIENDS, SETTINGS
     }
 
     @Nullable
@@ -34,8 +34,8 @@ public abstract class PinTabScreen extends Screen {
     /** Adds the tab bar and the Done button; subclasses call this from {@code init}. */
     protected void addTabs() {
         int labelWidth = MARGIN + 58;
-        int tabWidth = Math.max(38,
-                Math.min(76, (width - labelWidth - MARGIN) / Tab.values().length - 2));
+        int tabWidth = Math.max(46,
+                Math.min(88, (width - labelWidth - MARGIN) / Tab.values().length - 2));
         int x = labelWidth;
         for (Tab value : Tab.values()) {
             PinButton button = new PinButton(x, 6, tabWidth, TAB_HEIGHT,
@@ -57,7 +57,6 @@ public abstract class PinTabScreen extends Screen {
             case SEARCH -> new PinBrowseScreen(parent);
             case SAVED -> new SavedPinsScreen(parent);
             case FRIENDS -> new PinFriendsScreen(parent);
-            case ACCOUNT -> new PinAccountScreen(parent);
             case SETTINGS -> new PinSettingsScreen(parent);
         });
     }

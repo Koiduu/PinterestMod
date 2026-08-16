@@ -18,6 +18,11 @@ import java.util.concurrent.ThreadLocalRandom;
  */
 public class PinBrowseScreen extends PinTabScreen {
 
+    /** Offered on the empty screen so a first search is one click away. */
+    private static final List<String> SUGGESTIONS = List.of(
+            "medieval castle", "cottagecore house", "japanese garden", "modern villa",
+            "fantasy treehouse", "desert temple");
+
     private final PinGrid grid = new PinGrid();
 
     @Nullable
@@ -67,6 +72,36 @@ public class PinBrowseScreen extends PinTabScreen {
         if (!query.isEmpty() && grid.pins().isEmpty()) {
             loadMore();
         }
+        if (query.isEmpty()) {
+            addSuggestions();
+        }
+    }
+
+    /** One-click example searches, centred under the prompt while the grid is empty. */
+    private void addSuggestions() {
+        int rowWidth = 0;
+        for (String suggestion : SUGGESTIONS) {
+            rowWidth += font.width(suggestion) + 16 + 6;
+        }
+        int x = Math.max(MARGIN, (width - (rowWidth - 6)) / 2);
+        int y = height / 2 + 14;
+        for (String suggestion : SUGGESTIONS) {
+            int buttonWidth = font.width(suggestion) + 16;
+            if (x + buttonWidth > width - MARGIN) {
+                x = Math.max(MARGIN, (width - (rowWidth - 6)) / 2);
+                y += 24;
+            }
+            addRenderableWidget(PinButton.of(x, y, buttonWidth, 20, Component.literal(suggestion),
+                    () -> search(suggestion)));
+            x += buttonWidth + 6;
+        }
+    }
+
+    private void search(String newQuery) {
+        if (searchBox != null) {
+            searchBox.setValue(newQuery);
+        }
+        startSearch();
     }
 
     private void startSearch() {
@@ -82,7 +117,9 @@ public class PinBrowseScreen extends PinTabScreen {
         bookmark = null;
         exhausted = false;
         error = null;
-        loadMore();
+        // Rebuilding drops the suggestion chips and kicks off the first page.
+        clearWidgets();
+        init();
     }
 
     /** Pins a random result: from what is already loaded, or from a fresh search of the typed query. */
@@ -133,7 +170,12 @@ public class PinBrowseScreen extends PinTabScreen {
                     : loading
                             ? Component.translatable("screen.pinspo.searching")
                             : Component.translatable("screen.pinspo.search_prompt");
-            guiGraphics.drawCenteredString(font, message, width / 2, height / 2 - 4, COLOR_MUTED);
+            guiGraphics.drawCenteredString(font, message, width / 2, height / 2 - 14, COLOR_MUTED);
+            if (query.isEmpty()) {
+                guiGraphics.drawCenteredString(font,
+                        Component.translatable("screen.pinspo.suggestions"),
+                        width / 2, height / 2 + 2, PinTheme.ACCENT);
+            }
         } else {
             guiGraphics.drawString(font, Component.translatable("screen.pinspo.save_hint"),
                     MARGIN, CONTENT_TOP + 24, COLOR_MUTED, false);
