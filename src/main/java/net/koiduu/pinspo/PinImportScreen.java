@@ -42,7 +42,7 @@ public class PinImportScreen extends PinTabScreen {
     protected void init() {
         addTabs();
 
-        int buttonsWidth = 168;
+        int buttonsWidth = 226;
         int linkWidth = Math.max(120, width - MARGIN * 2 - buttonsWidth - 12);
         linkBox = new EditBox(font, MARGIN, CONTENT_TOP, linkWidth, 20,
                 Component.translatable("screen.pinspo.link"));
@@ -58,6 +58,8 @@ public class PinImportScreen extends PinTabScreen {
                 Component.translatable("screen.pinspo.paste"), this::pasteLink));
         addRenderableWidget(PinButton.of(x + 112, CONTENT_TOP, 56, 20,
                 Component.translatable("screen.pinspo.choose_file"), this::chooseFile));
+        addRenderableWidget(PinButton.of(x + 172, CONTENT_TOP, 54, 20,
+                Component.translatable("screen.pinspo.tab_save"), this::saveLink));
 
         grid.setPins(LocalImages.browsable());
         grid.setBounds(MARGIN, CONTENT_TOP + 38, width - MARGIN, height - FOOTER_HEIGHT - 8);
@@ -72,25 +74,50 @@ public class PinImportScreen extends PinTabScreen {
 
     /** Pins a pasted image address; Pinterest pin pages are resolved to their image first. */
     private void pinLink() {
-        if (linkBox == null) {
-            return;
-        }
-        String url = PinSecurity.withoutImageConversion(linkBox.getValue().trim());
-        if (url.isEmpty()) {
-            return;
-        }
-        if (PinSecurity.isAllowedImageUrl(url)) {
-            PinnedImage.pin(new PinterestApi.Pin(url,
-                    Component.translatable("screen.pinspo.pasted_image").getString(), url, url, 0, 0));
+        PinterestApi.Pin pin = pastedPin();
+        if (pin != null) {
+            PinnedImage.pin(pin);
             onClose();
             return;
         }
-        if (url.startsWith("https://www.pinterest.com/pin/") || url.startsWith("https://pin.it/")) {
+        String url = pastedUrl();
+        if (isPinPage(url)) {
             PinnedImage.pin(url);
             onClose();
             return;
         }
-        feedback = Component.translatable("screen.pinspo.bad_link");
+        feedback = Component.translatable(url.isEmpty() ? "screen.pinspo.no_link" : "screen.pinspo.bad_link");
+    }
+
+    /** Puts a pasted link straight into one of the player's folders instead of on screen. */
+    private void saveLink() {
+        PinterestApi.Pin pin = pastedPin();
+        if (pin == null) {
+            feedback = Component.translatable(pastedUrl().isEmpty()
+                    ? "screen.pinspo.no_link"
+                    : isPinPage(pastedUrl()) ? "screen.pinspo.pin_page_not_saveable" : "screen.pinspo.bad_link");
+            return;
+        }
+        minecraft.setScreen(new PinActionScreen(this, pin));
+    }
+
+    private String pastedUrl() {
+        return linkBox == null ? "" : PinSecurity.withoutImageConversion(linkBox.getValue().trim());
+    }
+
+    /** The pasted link as a pin, or {@code null} when it is not an image address PinSpo accepts. */
+    @Nullable
+    private PinterestApi.Pin pastedPin() {
+        String url = pastedUrl();
+        if (!PinSecurity.isAllowedImageUrl(url)) {
+            return null;
+        }
+        return new PinterestApi.Pin(url,
+                Component.translatable("screen.pinspo.pasted_image").getString(), url, url, 0, 0);
+    }
+
+    private static boolean isPinPage(String url) {
+        return url.startsWith("https://www.pinterest.com/pin/") || url.startsWith("https://pin.it/");
     }
 
     /**

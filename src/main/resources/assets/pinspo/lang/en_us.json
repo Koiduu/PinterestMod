@@ -56,6 +56,8 @@
   "screen.pinspo.pasted_image": "Pasted image",
   "screen.pinspo.bad_link": "That is not an image link PinSpo can use — Discord and Pinterest links work.",
   "screen.pinspo.bad_file": "That file is not an image PinSpo can read.",
+  "screen.pinspo.no_link": "Paste an image link into the box first.",
+  "screen.pinspo.pin_page_not_saveable": "Pin it first, then right-click it in Recent to save it into a folder.",
   "screen.pinspo.local_hint": "Your screenshots and imported images — left-click to use one, right-click to send or save it.",
   "screen.pinspo.no_local_images": "Nothing here yet — paste an image link or pick a file from your computer.",
   "screen.pinspo.not_shareable": "Only Pinterest references can be sent to friends.",

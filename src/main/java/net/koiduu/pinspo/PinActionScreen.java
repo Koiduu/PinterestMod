@@ -33,7 +33,7 @@ public class PinActionScreen extends Screen {
 
     private final Screen parent;
     private final PinterestApi.Pin pin;
-    private Mode mode = Mode.SEND;
+    private Mode mode;
     private int scroll;
     @Nullable
     private EditBox nameBox;
@@ -47,6 +47,8 @@ public class PinActionScreen extends Screen {
         super(Component.translatable("screen.pinspo.pin_actions"));
         this.parent = parent;
         this.pin = pin;
+        // A local file or a pasted link cannot be sent, so it opens on the folder tab instead.
+        this.mode = PinShare.isShareable(pin) ? Mode.SEND : Mode.SAVE;
     }
 
     @Override
@@ -61,13 +63,17 @@ public class PinActionScreen extends Screen {
 
         int tabWidth = (PANEL_WIDTH - 4) / 2;
         for (Mode value : Mode.values()) {
-            addRenderableWidget(new PinButton(x + (value.ordinal() * (tabWidth + 4)), y, tabWidth, 20,
+            PinButton tab = new PinButton(x + (value.ordinal() * (tabWidth + 4)), y, tabWidth, 20,
                     Component.translatable(value.label), PinButton.Style.TAB, () -> {
                         mode = value;
                         scroll = 0;
                         feedback = null;
                         rebuild();
-                    }).selected(mode == value));
+                    });
+            tab.selected(mode == value);
+            // Sending needs a Pinterest reference, so the tab is disabled for anything else.
+            tab.active = value == Mode.SAVE || PinShare.isShareable(pin);
+            addRenderableWidget(tab);
         }
         y += 24;
 
