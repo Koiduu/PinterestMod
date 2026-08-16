@@ -1,6 +1,6 @@
 package net.koiduu.pinspo;
 
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.renderer.RenderPipelines;
@@ -57,7 +57,7 @@ public class SavedPinsScreen extends PinTabScreen {
 
         addRenderableWidget(PinButton.primary(sidebarLeft, CONTENT_TOP, SIDEBAR_WIDTH, 20,
                 Component.translatable("screen.pinspo.new_folder"),
-                () -> minecraft.setScreen(new FolderPickerScreen(this, null))));
+                () -> minecraft.setScreenAndShow(new FolderPickerScreen(this, null))));
         PinButton delete = PinButton.of(sidebarLeft, CONTENT_TOP + 22, SIDEBAR_WIDTH, 20,
                 Component.translatable("screen.pinspo.delete_folder"), () -> {
                     SavedPins.deleteFolder(folder);
@@ -123,25 +123,25 @@ public class SavedPinsScreen extends PinTabScreen {
     }
 
     @Override
-    public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
+    public void extractRenderState(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTick) {
         renderPanel(guiGraphics, sidebarLeft - 4, sidebarTop - 4,
                 sidebarLeft + SIDEBAR_WIDTH + 4, sidebarBottom + 4);
-        super.render(guiGraphics, mouseX, mouseY, partialTick);
+        super.extractRenderState(guiGraphics, mouseX, mouseY, partialTick);
         renderSidebar(guiGraphics, mouseX, mouseY);
         grid.render(guiGraphics, font, mouseX, mouseY);
 
         if (grid.pins().isEmpty()) {
-            guiGraphics.drawCenteredString(font, Component.translatable("screen.pinspo.no_saved"),
+            guiGraphics.centeredText(font, Component.translatable("screen.pinspo.no_saved"),
                     (width + SIDEBAR_WIDTH) / 2, height / 2 - 4, COLOR_MUTED);
         }
         Component hint = feedback != null
                 ? feedback
                 : Component.translatable(isRecent() ? "screen.pinspo.recent_hint" : "screen.pinspo.remove_hint");
-        guiGraphics.drawString(font, hint, sidebarLeft + SIDEBAR_WIDTH + 8, CONTENT_TOP + 30,
+        guiGraphics.text(font, hint, sidebarLeft + SIDEBAR_WIDTH + 8, CONTENT_TOP + 30,
                 COLOR_MUTED, false);
     }
 
-    private void renderSidebar(GuiGraphics guiGraphics, int mouseX, int mouseY) {
+    private void renderSidebar(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY) {
         int contentHeight = folders.size() * ROW_HEIGHT;
         sidebarScroll = Math.clamp(sidebarScroll, 0.0D,
                 Math.max(0.0D, contentHeight - (sidebarBottom - sidebarTop)));
@@ -158,7 +158,7 @@ public class SavedPinsScreen extends PinTabScreen {
             guiGraphics.fill(sidebarLeft, y, sidebarLeft + SIDEBAR_WIDTH, y + ROW_HEIGHT - 2,
                     selected ? 0xFF4A4A52 : hovered ? 0xFF2E2E34 : 0xFF1E1E22);
             renderCover(guiGraphics, name, sidebarLeft + 2, y + 1);
-            guiGraphics.drawString(font,
+            guiGraphics.text(font,
                     font.plainSubstrByWidth(folderLabel(name).getString(), SIDEBAR_WIDTH - COVER_SIZE - 10),
                     sidebarLeft + COVER_SIZE + 6, y + ROW_HEIGHT / 2 - 6, COLOR_TEXT, false);
         }
@@ -167,7 +167,7 @@ public class SavedPinsScreen extends PinTabScreen {
                 sidebarScroll, contentHeight);
     }
 
-    private void renderCover(GuiGraphics guiGraphics, String name, int x, int y) {
+    private void renderCover(GuiGraphicsExtractor guiGraphics, String name, int x, int y) {
         guiGraphics.fill(x, y, x + COVER_SIZE, y + COVER_SIZE, 0xFF101014);
         List<PinterestApi.Pin> pins = RECENT.equals(name) ? PinHistory.entries() : SavedPins.pins(name);
         if (pins.isEmpty()) {
@@ -202,7 +202,7 @@ public class SavedPinsScreen extends PinTabScreen {
         }
         if (event.button() == GLFW.GLFW_MOUSE_BUTTON_RIGHT) {
             if (isRecent()) {
-                minecraft.setScreen(new PinActionScreen(this, pin));
+                minecraft.setScreenAndShow(new PinActionScreen(this, pin));
                 return true;
             }
             SavedPins.remove(folder, pin);

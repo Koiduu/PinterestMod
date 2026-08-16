@@ -1,6 +1,6 @@
 package net.koiduu.pinspo;
 
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 
 /** The mod's own flat, Pinterest-flavoured look: colours plus the few primitives every screen draws. */
 public final class PinTheme {
@@ -25,14 +25,14 @@ public final class PinTheme {
     }
 
     /** A filled rectangle with its four corner pixels cut, which reads as a soft rounded card. */
-    public static void roundedRect(GuiGraphics guiGraphics, int x, int y, int width, int height, int color) {
+    public static void roundedRect(GuiGraphicsExtractor guiGraphics, int x, int y, int width, int height, int color) {
         guiGraphics.fill(x + 1, y, x + width - 1, y + height, color);
         guiGraphics.fill(x, y + 1, x + 1, y + height - 1, color);
         guiGraphics.fill(x + width - 1, y + 1, x + width, y + height - 1, color);
     }
 
     /** Draws a one-pixel rounded outline. */
-    public static void roundedOutline(GuiGraphics guiGraphics, int x, int y, int width, int height, int color) {
+    public static void roundedOutline(GuiGraphicsExtractor guiGraphics, int x, int y, int width, int height, int color) {
         guiGraphics.fill(x + 1, y, x + width - 1, y + 1, color);
         guiGraphics.fill(x + 1, y + height - 1, x + width - 1, y + height, color);
         guiGraphics.fill(x, y + 1, x + 1, y + height - 1, color);
@@ -40,21 +40,21 @@ public final class PinTheme {
     }
 
     /** A card: rounded fill plus outline, brighter while hovered. */
-    public static void card(GuiGraphics guiGraphics, int x, int y, int width, int height, boolean hovered) {
+    public static void card(GuiGraphicsExtractor guiGraphics, int x, int y, int width, int height, boolean hovered) {
         roundedRect(guiGraphics, x, y, width, height, hovered ? CARD_HOVER : CARD);
         roundedOutline(guiGraphics, x, y, width, height, hovered ? ACCENT : BORDER);
     }
 
     /** A translucent content panel with a subtle border. */
-    public static void panel(GuiGraphics guiGraphics, int x, int y, int width, int height) {
+    public static void panel(GuiGraphicsExtractor guiGraphics, int x, int y, int width, int height) {
         roundedRect(guiGraphics, x, y, width, height, PANEL);
         roundedOutline(guiGraphics, x, y, width, height, BORDER);
     }
 
     /** A section label with a short accent rule under it. */
-    public static void sectionHeader(GuiGraphics guiGraphics, net.minecraft.client.gui.Font font,
+    public static void sectionHeader(GuiGraphicsExtractor guiGraphics, net.minecraft.client.gui.Font font,
                                      net.minecraft.network.chat.Component label, int x, int y) {
-        guiGraphics.drawString(font, label, x, y, TEXT, false);
+        guiGraphics.text(font, label, x, y, TEXT, false);
         guiGraphics.fill(x, y + 10, x + font.width(label), y + 11, ACCENT);
     }
 }

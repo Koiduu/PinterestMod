@@ -4,7 +4,7 @@ import com.mojang.blaze3d.platform.InputConstants;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
-import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
+import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
 import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
@@ -33,7 +33,7 @@ public class PinSpoClient implements ClientModInitializer {
 
     @Override
     public void onInitializeClient() {
-        KeyBindingHelper.registerKeyBinding(OPEN_KEY);
+        KeyMappingHelper.registerKeyMapping(OPEN_KEY);
 
         HudElementRegistry.attachElementAfter(
                 VanillaHudElements.MISC_OVERLAYS,
@@ -62,13 +62,13 @@ public class PinSpoClient implements ClientModInitializer {
 
     private static void onEndTick(Minecraft client) {
         while (OPEN_KEY.consumeClick()) {
-            if (client.screen != null) {
+            if (client.gui.screen() != null) {
                 continue;
             }
             if (PinnedImage.isPinned()) {
-                client.setScreen(new PinSettingsScreen(null));
+                client.setScreenAndShow(new PinSettingsScreen(null));
             } else {
-                client.setScreen(new PinBrowseScreen(null));
+                client.setScreenAndShow(new PinBrowseScreen(null));
             }
         }
     }

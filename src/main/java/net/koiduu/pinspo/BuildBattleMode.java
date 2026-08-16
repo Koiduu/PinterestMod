@@ -62,8 +62,8 @@ public final class BuildBattleMode {
             pinRandom(theme);
             return;
         }
-        if (client.screen == null) {
-            client.setScreen(new PinBrowseScreen(null, theme));
+        if (client.gui.screen() == null) {
+            client.setScreenAndShow(new PinBrowseScreen(null, theme));
         }
     }
 
@@ -91,7 +91,7 @@ public final class BuildBattleMode {
     private static void notifyPlayer(Component message) {
         Minecraft client = Minecraft.getInstance();
         if (client.player != null) {
-            client.player.displayClientMessage(message, true);
+            client.player.sendOverlayMessage(message);
         }
     }
 }

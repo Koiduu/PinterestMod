@@ -3,7 +3,7 @@ package net.koiduu.pinspo;
 import com.mojang.blaze3d.platform.NativeImage;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.network.chat.Component;
@@ -315,7 +315,7 @@ public final class PinnedImage {
         }
     }
 
-    public static void render(GuiGraphics guiGraphics) {
+    public static void render(GuiGraphicsExtractor guiGraphics) {
         if (hidden || texture == null || imageWidth <= 0 || imageHeight <= 0) {
             return;
         }
@@ -361,7 +361,7 @@ public final class PinnedImage {
         Minecraft client = Minecraft.getInstance();
         client.execute(() -> {
             if (client.player != null) {
-                client.player.displayClientMessage(Component.translatable(translationKey), false);
+                client.player.sendSystemMessage(Component.translatable(translationKey));
             }
         });
     }

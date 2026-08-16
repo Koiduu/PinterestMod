@@ -1,7 +1,7 @@
 package net.koiduu.pinspo;
 
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.renderer.RenderPipelines;
 import org.jetbrains.annotations.Nullable;
 
@@ -64,7 +64,7 @@ public class PinGrid {
         scroll = Math.clamp(scroll - amount * (cellHeight / 3.0D), 0.0D, maxScroll());
     }
 
-    public void render(GuiGraphics guiGraphics, Font font, int mouseX, int mouseY) {
+    public void render(GuiGraphicsExtractor guiGraphics, Font font, int mouseX, int mouseY) {
         scroll = Math.clamp(scroll, 0.0D, maxScroll());
         guiGraphics.enableScissor(left, top, right, bottom);
         for (int index = 0; index < pins.size(); index++) {
@@ -80,7 +80,7 @@ public class PinGrid {
     }
 
     /** Draws a thin scroll indicator, or nothing when everything already fits. */
-    public static void renderScrollbar(GuiGraphics guiGraphics, int x, int top, int bottom,
+    public static void renderScrollbar(GuiGraphicsExtractor guiGraphics, int x, int top, int bottom,
                                        double scroll, int contentHeight) {
         int viewHeight = bottom - top;
         if (contentHeight <= viewHeight || viewHeight <= 0) {
@@ -93,7 +93,7 @@ public class PinGrid {
         guiGraphics.fill(x, thumbTop, x + 3, thumbTop + thumbHeight, PinTheme.ACCENT);
     }
 
-    private void renderCell(GuiGraphics guiGraphics, Font font, PinterestApi.Pin pin,
+    private void renderCell(GuiGraphicsExtractor guiGraphics, Font font, PinterestApi.Pin pin,
                             int x, int y, int mouseX, int mouseY) {
         boolean hovered = mouseX >= x && mouseX < x + cellWidth && mouseY >= y && mouseY < y + cellHeight
                 && mouseY >= top && mouseY < bottom;
@@ -101,7 +101,7 @@ public class PinGrid {
 
         ThumbnailCache.Thumbnail thumbnail = ThumbnailCache.get(pin.thumbnailUrl());
         if (thumbnail == null) {
-            guiGraphics.drawCenteredString(font, "...", x + cellWidth / 2, y + cellHeight / 2 - 4,
+            guiGraphics.centeredText(font, "...", x + cellWidth / 2, y + cellHeight / 2 - 4,
                     PinTheme.TEXT_DISABLED);
             return;
         }
@@ -127,7 +127,7 @@ public class PinGrid {
         if (hovered) {
             guiGraphics.fill(x + 1, y + cellHeight - 12, x + cellWidth - 1, y + cellHeight - 1, 0xD0121216);
             guiGraphics.fill(x + 1, y + cellHeight - 13, x + cellWidth - 1, y + cellHeight - 12, PinTheme.ACCENT);
-            guiGraphics.drawString(font, font.plainSubstrByWidth(pin.title(), cellWidth - 8),
+            guiGraphics.text(font, font.plainSubstrByWidth(pin.title(), cellWidth - 8),
                     x + 4, y + cellHeight - 10, PinTheme.TEXT, false);
         }
     }

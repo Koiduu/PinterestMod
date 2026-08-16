@@ -1,6 +1,6 @@
 package net.koiduu.pinspo;
 
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import org.jetbrains.annotations.Nullable;
@@ -53,7 +53,7 @@ public abstract class PinTabScreen extends Screen {
         if (target == tab()) {
             return;
         }
-        minecraft.setScreen(switch (target) {
+        minecraft.setScreenAndShow(switch (target) {
             case SEARCH -> new PinBrowseScreen(parent);
             case IMPORT -> new PinImportScreen(parent);
             case SAVED -> new SavedPinsScreen(parent);
@@ -63,8 +63,8 @@ public abstract class PinTabScreen extends Screen {
     }
 
     @Override
-    public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
-        super.render(guiGraphics, mouseX, mouseY, partialTick);
+    public void extractRenderState(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTick) {
+        super.extractRenderState(guiGraphics, mouseX, mouseY, partialTick);
         // Chrome drawn on top of the vanilla dim: a branded tab bar, a titled content area and a footer.
         guiGraphics.fill(0, 0, width, TAB_HEIGHT + 12, PinTheme.BAR);
         guiGraphics.fill(0, TAB_HEIGHT + 12, width, TAB_HEIGHT + 13, PinTheme.BORDER);
@@ -72,12 +72,12 @@ public abstract class PinTabScreen extends Screen {
         guiGraphics.fill(0, height - FOOTER_HEIGHT + 1, width, height, PinTheme.BAR);
 
         guiGraphics.fill(MARGIN, 8, MARGIN + 3, 24, PinTheme.ACCENT);
-        guiGraphics.drawString(font, Component.literal("PinSpo"), MARGIN + 8, 12, PinTheme.TEXT, false);
-        guiGraphics.drawString(font, title, MARGIN, TAB_HEIGHT + 20, COLOR_TEXT, false);
+        guiGraphics.text(font, Component.literal("PinSpo"), MARGIN + 8, 12, PinTheme.TEXT, false);
+        guiGraphics.text(font, title, MARGIN, TAB_HEIGHT + 20, COLOR_TEXT, false);
     }
 
     /** Draws a subtle rounded-ish backing panel behind a region of content. */
-    protected void renderPanel(GuiGraphics guiGraphics, int left, int top, int right, int bottom) {
+    protected void renderPanel(GuiGraphicsExtractor guiGraphics, int left, int top, int right, int bottom) {
         PinTheme.panel(guiGraphics, left, top, right - left, bottom - top);
     }
 
@@ -90,6 +90,6 @@ public abstract class PinTabScreen extends Screen {
     public void onClose() {
         // Leaving PinSpo entirely: the grid textures are no longer needed.
         ThumbnailCache.clear();
-        minecraft.setScreen(parent);
+        minecraft.setScreenAndShow(parent);
     }
 }
