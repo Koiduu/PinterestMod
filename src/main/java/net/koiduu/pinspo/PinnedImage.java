@@ -113,8 +113,17 @@ public final class PinnedImage {
 
     @Nullable
     private static NativeImage download(String url) {
+        if (LocalImages.isLocalUrl(url)) {
+            byte[] local = LocalImages.read(url);
+            try {
+                return local == null ? null : downscale(ImageDecoder.decode(local));
+            } catch (IOException e) {
+                PinSpoClient.LOGGER.warn("Could not decode local image {}", url, e);
+                return null;
+            }
+        }
         if (!PinSecurity.isAllowedImageUrl(url) && !isPinPageUrl(url)) {
-            PinSpoClient.LOGGER.warn("Refusing to pin an address that is not a Pinterest image or pin page");
+            PinSpoClient.LOGGER.warn("Refusing to pin an address that is not an allowed image or a Pinterest pin page");
             return null;
         }
         Path cacheFile = CACHE_DIR.resolve(cacheName(url));
@@ -136,7 +145,10 @@ public final class PinnedImage {
         }
 
         byte[] bytes = null;
-        String originals = PinSpoConfig.get().preferOriginalResolution ? toOriginalsUrl(imageUrl) : null;
+        // Only Pinterest URLs encode their size in the path, so only they can be upgraded.
+        String originals = PinSpoConfig.get().preferOriginalResolution && imageUrl.contains("pinimg.com")
+                ? toOriginalsUrl(imageUrl)
+                : null;
         if (originals != null) {
             bytes = fetch(originals);
         }

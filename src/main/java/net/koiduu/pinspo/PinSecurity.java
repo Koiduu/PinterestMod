@@ -1,6 +1,7 @@
 package net.koiduu.pinspo;
 
 import java.net.URI;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 /**
@@ -11,6 +12,13 @@ public final class PinSecurity {
 
     /** Images may only ever be fetched from Pinterest's own image CDN. */
     private static final String IMAGE_HOST_SUFFIX = ".pinimg.com";
+    /** Discord's attachment CDN, so a link copied out of Discord can be pinned as well. */
+    private static final Set<String> EXTRA_IMAGE_HOSTS =
+            Set.of("cdn.discordapp.com", "media.discordapp.net");
+    private static final Set<String> CONVERSION_PARAMETERS =
+            Set.of("format", "quality", "width", "height");
+    /** A file inside one of PinSpo's own image folders: no directories, no traversal. */
+    private static final Pattern LOCAL_NAME = Pattern.compile("[A-Za-z0-9_.-]{1,64}");
     private static final Pattern PLAYER_NAME = Pattern.compile("[A-Za-z0-9_]{1,16}");
     /** The hex filename Pinterest gives every image; also the only thing a share code carries. */
     private static final Pattern IMAGE_HASH = Pattern.compile("[0-9a-f]{6,64}");
@@ -22,7 +30,7 @@ public final class PinSecurity {
     }
 
     /**
-     * True only for {@code https} URLs on Pinterest's image CDN with an image extension, so a crafted
+     * True only for {@code https} URLs on an allowed image host with an image extension, so a crafted
      * share code cannot make the client fetch an arbitrary address.
      */
     public static boolean isAllowedImageUrl(String url) {
@@ -34,7 +42,10 @@ public final class PinSecurity {
                 return false;
             }
             host = host.toLowerCase();
-            if (!host.endsWith(IMAGE_HOST_SUFFIX) || uri.getUserInfo() != null) {
+            if (!host.endsWith(IMAGE_HOST_SUFFIX) && !EXTRA_IMAGE_HOSTS.contains(host)) {
+                return false;
+            }
+            if (uri.getUserInfo() != null) {
                 return false;
             }
             int dot = path.lastIndexOf('.');
@@ -44,12 +55,49 @@ public final class PinSecurity {
         }
     }
 
+    /**
+     * Discord links copied out of the app often ask its CDN to convert the image to WebP, which Java cannot
+     * decode, so the conversion parameters are dropped and the original file is fetched instead. The
+     * signature parameters Discord needs are left untouched.
+     */
+    public static String withoutImageConversion(String url) {
+        int query = url.indexOf('?');
+        if (query < 0) {
+            return url;
+        }
+        StringBuilder kept = new StringBuilder(url.substring(0, query));
+        char separator = '?';
+        for (String parameter : url.substring(query + 1).split("&")) {
+            String name = parameter.contains("=") ? parameter.substring(0, parameter.indexOf('=')) : parameter;
+            if (name.isEmpty() || CONVERSION_PARAMETERS.contains(name.toLowerCase())) {
+                continue;
+            }
+            kept.append(separator).append(parameter);
+            separator = '&';
+        }
+        return kept.toString();
+    }
+
     /** True for a pin that is safe to store, download and show. */
     public static boolean isAllowedPin(PinterestApi.Pin pin) {
         return pin != null
                 && pin.imageUrl() != null && pin.thumbnailUrl() != null
-                && isAllowedImageUrl(pin.imageUrl())
-                && isAllowedImageUrl(pin.thumbnailUrl());
+                && isPinnableUrl(pin.imageUrl())
+                && isPinnableUrl(pin.thumbnailUrl());
+    }
+
+    /** Either an allowed remote image or one of PinSpo's own local files. */
+    public static boolean isPinnableUrl(String url) {
+        return isAllowedImageUrl(url) || LocalImages.isLocalUrl(url);
+    }
+
+    /** A single file name inside one of PinSpo's image folders, with a supported image extension. */
+    public static boolean isLocalFileName(String name) {
+        if (name == null || name.contains("..") || !LOCAL_NAME.matcher(name).matches()) {
+            return false;
+        }
+        int dot = name.lastIndexOf('.');
+        return dot > 0 && isImageExtension(name.substring(dot + 1).toLowerCase());
     }
 
     public static boolean isImageHash(String hash) {

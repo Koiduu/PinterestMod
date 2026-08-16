@@ -18,7 +18,7 @@ public abstract class PinTabScreen extends Screen {
     protected static final int COLOR_MUTED = PinTheme.TEXT_MUTED;
 
     public enum Tab {
-        SEARCH, SAVED, FRIENDS, SETTINGS
+        SEARCH, IMPORT, SAVED, FRIENDS, SETTINGS
     }
 
     @Nullable
@@ -55,6 +55,7 @@ public abstract class PinTabScreen extends Screen {
         }
         minecraft.setScreen(switch (target) {
             case SEARCH -> new PinBrowseScreen(parent);
+            case IMPORT -> new PinImportScreen(parent);
             case SAVED -> new SavedPinsScreen(parent);
             case FRIENDS -> new PinFriendsScreen(parent);
             case SETTINGS -> new PinSettingsScreen(parent);

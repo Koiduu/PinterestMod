@@ -113,6 +113,10 @@ public class PinActionScreen extends Screen {
             onClose();
             return;
         }
+        if (!PinShare.isShareable(pin)) {
+            feedback = Component.translatable("screen.pinspo.not_shareable");
+            return;
+        }
         if (PinChat.sendPin(row, pin)) {
             feedback = Component.translatable("screen.pinspo.sent_to", row);
             rebuild();
@@ -135,17 +139,25 @@ public class PinActionScreen extends Screen {
             }
             return;
         }
-        if (!PinFriends.addFriend(value)) {
+        if (!PinSecurity.isPlayerName(value)) {
             feedback = Component.translatable("screen.pinspo.bad_name");
             return;
         }
+        // Friends are only added through a request, so this invites them instead.
+        boolean delivered = PinChat.sendRequest(value);
         nameBox.setValue("");
-        feedback = null;
+        feedback = Component.translatable(delivered
+                ? "screen.pinspo.request_sent"
+                : "screen.pinspo.request_offline", value);
         rebuild();
     }
 
     /** Clipboard fallback for servers that do not allow private messages. */
     private void copyCode() {
+        if (!PinShare.isShareable(pin)) {
+            feedback = Component.translatable("screen.pinspo.not_shareable");
+            return;
+        }
         minecraft.keyboardHandler.setClipboard(PinShare.encode(PinFriends.selfName(), List.of(pin)));
         feedback = Component.translatable("screen.pinspo.send_copied");
     }

@@ -61,8 +61,23 @@ public final class PinFriends {
         }
     }
 
+    /** Requests the player sent that have not been answered yet. */
+    public static List<String> sentRequests() {
+        return List.copyOf(all().sent);
+    }
+
+    /** Requests from other players waiting to be accepted or declined. */
+    public static List<String> pendingRequests() {
+        return List.copyOf(all().pending);
+    }
+
+    public static boolean isFriend(String name) {
+        return all().friends.contains(name);
+    }
+
     /**
-     * Adds a friend by Minecraft name.
+     * Adds a friend by Minecraft name, without going through a request. Used when a request is accepted
+     * and when a code is imported by hand.
      *
      * @return true when the name was valid and is now on the list
      */
@@ -71,15 +86,67 @@ public final class PinFriends {
         if (!PinSecurity.isPlayerName(name) || all().friends.size() >= MAX_FRIENDS) {
             return false;
         }
+        boolean changed = all().pending.remove(name);
+        changed |= all().sent.remove(name);
         if (!all().friends.contains(name)) {
             all().friends.add(name);
+            changed = true;
+        }
+        if (changed) {
             save();
         }
         return true;
     }
 
+    /**
+     * Notes that the player asked {@code name} to be friends, so the answer can be matched up later.
+     *
+     * @return true when the name was valid and the request is now pending
+     */
+    public static boolean recordSentRequest(String rawName) {
+        String name = rawName.trim();
+        if (!PinSecurity.isPlayerName(name) || all().sent.size() >= MAX_FRIENDS
+                || all().friends.contains(name)) {
+            return false;
+        }
+        if (!all().sent.contains(name)) {
+            all().sent.add(name);
+            save();
+        }
+        return true;
+    }
+
+    /** Files a request received from another player. Ignored when they are already a friend. */
+    public static void recordIncomingRequest(String rawName) {
+        String name = rawName.trim();
+        if (!PinSecurity.isPlayerName(name) || all().friends.contains(name)
+                || all().pending.size() >= MAX_FRIENDS) {
+            return;
+        }
+        // A request that crosses one the player already sent simply becomes a friendship.
+        if (all().sent.contains(name)) {
+            addFriend(name);
+            return;
+        }
+        if (!all().pending.contains(name)) {
+            all().pending.add(name);
+            save();
+        }
+    }
+
+    /** Drops a request in either direction, e.g. when it is declined or cancelled. */
+    public static void removeRequest(String name) {
+        boolean changed = all().pending.remove(name);
+        changed |= all().sent.remove(name);
+        if (changed) {
+            save();
+        }
+    }
+
     public static void removeFriend(String friend) {
         boolean changed = all().friends.remove(friend);
+        changed |= all().pending.remove(friend);
+        changed |= all().sent.remove(friend);
         changed |= all().chats.remove(friend) != null;
         changed |= all().unread.remove(friend) != null;
         if (changed) {
@@ -111,7 +178,6 @@ public final class PinFriends {
         if (!PinSecurity.isPlayerName(friend)) {
             return;
         }
-        addFriend(friend);
         List<Message> chat = all().chats.computeIfAbsent(friend, key -> new ArrayList<>());
         chat.add(message);
         while (chat.size() > MAX_MESSAGES) {
@@ -157,13 +223,20 @@ public final class PinFriends {
 
     private static final class Stored {
         List<String> friends = new ArrayList<>();
+        /** Requests waiting for this player to answer. */
+        List<String> pending = new ArrayList<>();
+        /** Requests this player sent and that have not been answered. */
+        List<String> sent = new ArrayList<>();
         Map<String, List<Message>> chats = new LinkedHashMap<>();
         Map<String, Integer> unread = new LinkedHashMap<>();
 
         /** Drops anything a hand-edited or older file might contain that the screens cannot handle. */
         void normalise() {
-            friends = friends == null ? new ArrayList<>() : new ArrayList<>(friends);
-            friends.removeIf(name -> name == null || !PinSecurity.isPlayerName(name));
+            friends = names(friends);
+            pending = names(pending);
+            sent = names(sent);
+            pending.removeAll(friends);
+            sent.removeAll(friends);
             chats = chats == null ? new LinkedHashMap<>() : new LinkedHashMap<>(chats);
             unread = unread == null ? new LinkedHashMap<>() : new LinkedHashMap<>(unread);
             chats.entrySet().removeIf(entry ->
@@ -179,6 +252,12 @@ public final class PinFriends {
                 }
                 return cleaned;
             });
+        }
+
+        private static List<String> names(@Nullable List<String> raw) {
+            List<String> cleaned = raw == null ? new ArrayList<>() : new ArrayList<>(raw);
+            cleaned.removeIf(name -> name == null || !PinSecurity.isPlayerName(name));
+            return cleaned;
         }
     }
 }

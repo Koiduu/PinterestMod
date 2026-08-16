@@ -83,7 +83,7 @@ public class PinSpoConfig {
         offsetY = clamp01(offsetY);
         scale = Math.clamp(scale, 0.05F, 1.0F);
         opacity = Math.clamp(opacity, 0.05F, 1.0F);
-        if (!pinnedUrl.isEmpty() && !PinSecurity.isAllowedImageUrl(pinnedUrl)) {
+        if (!pinnedUrl.isEmpty() && !PinSecurity.isPinnableUrl(pinnedUrl)) {
             // A hand-edited config must not be able to point the overlay at an arbitrary address.
             pinnedUrl = "";
         }

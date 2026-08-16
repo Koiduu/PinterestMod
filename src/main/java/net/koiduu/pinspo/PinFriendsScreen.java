@@ -21,11 +21,15 @@ public class PinFriendsScreen extends PinTabScreen {
 
     private static final int SIDEBAR_WIDTH = 110;
     private static final int FRIEND_ROW_HEIGHT = 20;
+    private static final int REQUEST_ROW_HEIGHT = 20;
+    /** Requests are rare, so only a few are shown at a time and the rest are counted. */
+    private static final int MAX_SHOWN_REQUESTS = 3;
     private static final int BUBBLE_HEIGHT = 16;
     private static final int PIN_BUBBLE_HEIGHT = 40;
     private static final int PIN_THUMB = 36;
 
     private List<String> friends = List.of();
+    private List<String> requests = List.of();
     private List<PinFriends.Message> conversation = List.of();
     @Nullable
     private String selected;
@@ -38,6 +42,7 @@ public class PinFriendsScreen extends PinTabScreen {
     private Component feedback;
     private double chatScroll;
     private int listTop;
+    private int friendsTop;
     private int listBottom;
     private int chatLeft;
     private int chatBottom;
@@ -54,6 +59,7 @@ public class PinFriendsScreen extends PinTabScreen {
     @Override
     protected void init() {
         friends = PinFriends.friends();
+        requests = PinFriends.pendingRequests();
         if (selected == null || !friends.contains(selected)) {
             selected = friends.isEmpty() ? null : friends.getFirst();
         }
@@ -63,6 +69,7 @@ public class PinFriendsScreen extends PinTabScreen {
         conversation = selected == null ? List.of() : PinFriends.conversation(selected);
 
         listTop = CONTENT_TOP + 24;
+        friendsTop = listTop + requestsHeight();
         listBottom = height - FOOTER_HEIGHT - 8;
         chatLeft = MARGIN + SIDEBAR_WIDTH + 12;
         chatBottom = listBottom - 24;
@@ -76,6 +83,7 @@ public class PinFriendsScreen extends PinTabScreen {
         addRenderableWidget(addBox);
         addRenderableWidget(PinButton.primary(MARGIN + SIDEBAR_WIDTH - 20, CONTENT_TOP, 20, 18,
                 Component.literal("+"), this::addFriend));
+        addRequestButtons();
 
         PinButton sendPin = PinButton.primary(chatLeft, CONTENT_TOP, 120, 18,
                 Component.translatable("screen.pinspo.send_pin"), this::sendCurrentPin);
@@ -104,17 +112,66 @@ public class PinFriendsScreen extends PinTabScreen {
         chatScroll = Math.max(0, contentHeight() - (chatBottom - listTop));
     }
 
+    /** Accept and decline buttons for each request waiting to be answered. */
+    private void addRequestButtons() {
+        int shown = Math.min(requests.size(), MAX_SHOWN_REQUESTS);
+        for (int index = 0; index < shown; index++) {
+            String name = requests.get(index);
+            int y = listTop + 10 + index * REQUEST_ROW_HEIGHT;
+            addRenderableWidget(PinButton.primary(MARGIN + SIDEBAR_WIDTH - 38, y, 18, 18,
+                    Component.literal("\u2713"), () -> {
+                        PinChat.acceptRequest(name);
+                        selected = name;
+                        feedback = Component.translatable("screen.pinspo.request_accepted", name);
+                        rebuild();
+                    }));
+            addRenderableWidget(PinButton.of(MARGIN + SIDEBAR_WIDTH - 18, y, 18, 18,
+                    Component.literal("\u2715"), () -> {
+                        PinChat.declineRequest(name);
+                        feedback = null;
+                        rebuild();
+                    }));
+        }
+    }
+
+    private int requestsHeight() {
+        if (requests.isEmpty()) {
+            return 0;
+        }
+        return 10 + Math.min(requests.size(), MAX_SHOWN_REQUESTS) * REQUEST_ROW_HEIGHT
+                + (requests.size() > MAX_SHOWN_REQUESTS ? 10 : 0) + 6;
+    }
+
+    /** Sends a friend request instead of adding the player straight away. */
     private void addFriend() {
         if (addBox == null || addBox.getValue().isBlank()) {
             return;
         }
-        if (!PinFriends.addFriend(addBox.getValue())) {
+        String name = addBox.getValue().trim();
+        if (!PinSecurity.isPlayerName(name)) {
             feedback = Component.translatable("screen.pinspo.bad_name");
             return;
         }
-        selected = addBox.getValue().trim();
+        if (PinFriends.isFriend(name)) {
+            selected = name;
+            addBox.setValue("");
+            feedback = null;
+            rebuild();
+            return;
+        }
+        if (PinFriends.pendingRequests().contains(name)) {
+            PinChat.acceptRequest(name);
+            selected = name;
+            addBox.setValue("");
+            feedback = Component.translatable("screen.pinspo.request_accepted", name);
+            rebuild();
+            return;
+        }
+        boolean delivered = PinChat.sendRequest(name);
         addBox.setValue("");
-        feedback = null;
+        feedback = Component.translatable(delivered
+                ? "screen.pinspo.request_sent"
+                : "screen.pinspo.request_offline", name);
         rebuild();
     }
 
@@ -137,6 +194,10 @@ public class PinFriendsScreen extends PinTabScreen {
             feedback = Component.translatable("screen.pinspo.nothing_to_send");
             return;
         }
+        if (!PinShare.isShareable(pin)) {
+            feedback = Component.translatable("screen.pinspo.not_shareable");
+            return;
+        }
         if (!PinChat.sendPin(selected, pin)) {
             feedback = Component.translatable("screen.pinspo.send_failed");
             return;
@@ -150,6 +211,10 @@ public class PinFriendsScreen extends PinTabScreen {
         PinterestApi.Pin pin = currentPin();
         if (pin == null) {
             feedback = Component.translatable("screen.pinspo.nothing_to_send");
+            return;
+        }
+        if (!PinShare.isShareable(pin)) {
+            feedback = Component.translatable("screen.pinspo.not_shareable");
             return;
         }
         minecraft.keyboardHandler.setClipboard(PinShare.encode(PinFriends.selfName(), List.of(pin)));
@@ -195,26 +260,25 @@ public class PinFriendsScreen extends PinTabScreen {
 
         Component hint = feedback != null
                 ? feedback
-                : Component.translatable(selected == null
-                        ? "screen.pinspo.friends_empty_hint"
-                        : "screen.pinspo.friends_hint");
+                : Component.translatable(sentHintKey());
         guiGraphics.drawString(font, font.plainSubstrByWidth(hint.getString(), width - MARGIN * 2 - 90),
                 MARGIN, height - FOOTER_HEIGHT + 12,
                 feedback != null ? PinTheme.ACCENT : PinTheme.TEXT_MUTED, false);
     }
 
     private void renderFriends(GuiGraphics guiGraphics, int mouseX, int mouseY) {
+        renderRequests(guiGraphics);
         if (friends.isEmpty()) {
             guiGraphics.drawString(font,
                     font.plainSubstrByWidth(
                             Component.translatable("screen.pinspo.no_friends").getString(), SIDEBAR_WIDTH),
-                    MARGIN + 2, listTop + 4, PinTheme.TEXT_MUTED, false);
+                    MARGIN + 2, friendsTop + 4, PinTheme.TEXT_MUTED, false);
             return;
         }
-        guiGraphics.enableScissor(MARGIN, listTop, MARGIN + SIDEBAR_WIDTH, listBottom);
+        guiGraphics.enableScissor(MARGIN, friendsTop, MARGIN + SIDEBAR_WIDTH, listBottom);
         for (int index = 0; index < friends.size(); index++) {
             String friend = friends.get(index);
-            int y = listTop + index * FRIEND_ROW_HEIGHT;
+            int y = friendsTop + index * FRIEND_ROW_HEIGHT;
             if (y > listBottom) {
                 break;
             }
@@ -237,6 +301,28 @@ public class PinFriendsScreen extends PinTabScreen {
             }
         }
         guiGraphics.disableScissor();
+    }
+
+    /** The requests waiting to be answered, above the friend list, each with its own accept/decline. */
+    private void renderRequests(GuiGraphics guiGraphics) {
+        if (requests.isEmpty()) {
+            return;
+        }
+        guiGraphics.drawString(font, Component.translatable("screen.pinspo.requests"),
+                MARGIN + 2, listTop, PinTheme.ACCENT, false);
+        int shown = Math.min(requests.size(), MAX_SHOWN_REQUESTS);
+        for (int index = 0; index < shown; index++) {
+            int y = listTop + 10 + index * REQUEST_ROW_HEIGHT;
+            PinTheme.card(guiGraphics, MARGIN, y, SIDEBAR_WIDTH, REQUEST_ROW_HEIGHT - 2, false);
+            guiGraphics.drawString(font,
+                    font.plainSubstrByWidth(requests.get(index), SIDEBAR_WIDTH - 44),
+                    MARGIN + 4, y + 5, PinTheme.TEXT, false);
+        }
+        if (requests.size() > shown) {
+            guiGraphics.drawString(font,
+                    Component.translatable("screen.pinspo.more_requests", requests.size() - shown),
+                    MARGIN + 2, listTop + 10 + shown * REQUEST_ROW_HEIGHT, PinTheme.TEXT_MUTED, false);
+        }
     }
 
     private void renderConversation(GuiGraphics guiGraphics, int mouseX, int mouseY) {
@@ -299,6 +385,14 @@ public class PinFriendsScreen extends PinTabScreen {
                 x + PIN_THUMB + 8, y + 22, hovered ? PinTheme.ACCENT : PinTheme.TEXT_MUTED, false);
     }
 
+    /** The footer hint depends on whether there is anything to explain yet. */
+    private String sentHintKey() {
+        if (!PinFriends.sentRequests().isEmpty() && friends.isEmpty()) {
+            return "screen.pinspo.request_waiting";
+        }
+        return selected == null ? "screen.pinspo.friends_empty_hint" : "screen.pinspo.friends_hint";
+    }
+
     private String bubbleText(PinFriends.Message message) {
         return message.text().isBlank() ? " " : message.text();
     }
@@ -317,8 +411,8 @@ public class PinFriendsScreen extends PinTabScreen {
             return true;
         }
         if (event.x() >= MARGIN && event.x() < MARGIN + SIDEBAR_WIDTH
-                && event.y() >= listTop && event.y() < listBottom) {
-            int index = (int) ((event.y() - listTop) / FRIEND_ROW_HEIGHT);
+                && event.y() >= friendsTop && event.y() < listBottom) {
+            int index = (int) ((event.y() - friendsTop) / FRIEND_ROW_HEIGHT);
             if (index >= 0 && index < friends.size()) {
                 if (event.button() == GLFW.GLFW_MOUSE_BUTTON_RIGHT) {
                     PinFriends.removeFriend(friends.get(index));

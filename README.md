@@ -10,10 +10,15 @@ runtime — just Pinterest's own image library drawn as plain textures.
 - **Search** queries the same JSON endpoint pinterest.com's own web app uses (no login needed). Click a
   pin to make it your reference overlay, right-click for **Send or save**: pick a friend to send it to,
   or a folder to keep it in.
+- **Images** covers references that are not from Pinterest: paste an image link (Discord's `cdn.discordapp.com`
+  and `media.discordapp.net` links work, as do Pinterest pin pages), or pick a file from your computer.
+  Your Minecraft screenshots and everything you imported show up in the grid below, usable like any pin.
 - **Saved** holds your folders plus a Recent list of the last five pins.
-- **Friends** is a chat: add a friend by Minecraft name and send them a reference. Messages travel as
-  Minecraft private messages (`/msg`), so the reference arrives in their PinSpo and one click puts it on
-  their screen. On servers that block `/msg`, **Copy code** / **Paste code** does the same by hand.
+- **Friends** is a chat with a request layer: type a player's name and press **+** to ask them, and they
+  accept or decline with the ✓/✗ buttons on their side before either of you can message the other.
+  Requests, messages and references travel as Minecraft private messages (`/msg`), so a reference arrives
+  in their PinSpo and one click puts it on their screen. On servers that block `/msg`, **Copy code** /
+  **Paste code** does the same by hand.
 - **Settings** holds the overlay controls and the Build Battle toggles.
 - **Escape** — closes the current screen without changing the pin.
 
@@ -22,7 +27,8 @@ straight away.
 
 Settings (opacity, size, screen corner, offsets, original-resolution preference, Build Battle mode) are
 stored in `config/pinspo.json`. The pinned image itself survives restarts too: its bytes are cached under
-`config/pinspo/images` and re-pinned on startup without hitting the network. Folders live in
+`config/pinspo/images` and re-pinned on startup without hitting the network. Imported files are copied into
+`config/pinspo/local` so they keep working after you move the original. Folders live in
 `config/pinspo-saved.json`, friends and chats in `config/pinspo-friends.json`.
 
 ## Requirements
@@ -44,6 +50,8 @@ The mod jar is written to `build/libs/`.
   the mod depends on it.
 - Everything that arrives from outside the game — share codes, chat messages, pin URLs, folder and friend
   names, hand-edited config files — goes through `PinSecurity` first: images may only ever be downloaded
-  from Pinterest's own CDN, names cannot contain path separators or formatting codes, friend names must
+  from Pinterest's own CDN or Discord's attachment CDN, imported files may only ever be read from PinSpo's
+  own image folder or your screenshots folder, names cannot contain path separators or formatting codes, friend names must
   match Minecraft's own name shape (so they cannot extend a command), and share codes carry nothing but a
-  hex image name, never a URL.
+  hex image name, never a URL. Because of that last point, only Pinterest references can be sent to a
+  friend; imported files and pasted links stay on your own machine.

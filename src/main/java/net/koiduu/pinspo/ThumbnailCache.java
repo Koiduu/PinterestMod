@@ -72,8 +72,17 @@ public final class ThumbnailCache {
 
     @Nullable
     private static NativeImage download(String url) {
+        if (LocalImages.isLocalUrl(url)) {
+            byte[] local = LocalImages.read(url);
+            try {
+                return local == null ? null : ImageDecoder.decode(local);
+            } catch (IOException e) {
+                PinSpoClient.LOGGER.warn("Could not decode local image {}: {}", url, e.toString());
+                return null;
+            }
+        }
         if (!PinSecurity.isAllowedImageUrl(url)) {
-            PinSpoClient.LOGGER.warn("Refusing to download a thumbnail from an address that is not Pinterest's CDN");
+            PinSpoClient.LOGGER.warn("Refusing to download a thumbnail from an address that is not an allowed image host");
             return null;
         }
         Path cacheFile = CACHE_DIR.resolve(hash(url) + ".img");

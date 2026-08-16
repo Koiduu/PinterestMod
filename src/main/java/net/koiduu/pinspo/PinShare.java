@@ -75,6 +75,14 @@ public final class PinShare {
         return new Shared(PinSecurity.cleanName(matcher.group(1)), pins);
     }
 
+    /**
+     * True when a pin can travel in a share code at all. Only Pinterest references can: a local file or a
+     * link from elsewhere has nothing the other client could rebuild.
+     */
+    public static boolean isShareable(PinterestApi.Pin pin) {
+        return imageName(pin.imageUrl()) != null;
+    }
+
     /** True when {@code text} contains a share code, used to spot PinSpo messages in chat. */
     public static boolean looksLikeCode(String text) {
         return CODE.matcher(text).find();

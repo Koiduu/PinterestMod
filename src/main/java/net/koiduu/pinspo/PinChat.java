@@ -24,6 +24,10 @@ public final class PinChat {
             "^([A-Za-z0-9_]{1,16})\\s+whispers(?:\\s+to\\s+you)?\\s*[:]\\s*(.+)$");
     /** Vanilla refuses longer chat messages, and a command adds its own prefix. */
     private static final int MAX_MESSAGE_LENGTH = 200;
+    /** Friend requests travel as these marker messages, so both sides stay in step. */
+    private static final String REQUEST = "PinSpo?friend";
+    private static final String ACCEPT = "PinSpo!friend";
+    private static final String DECLINE = "PinSpo-friend";
 
     private PinChat() {
     }
@@ -40,6 +44,30 @@ public final class PinChat {
         }
         PinFriends.recordSent(friend, cleaned, null);
         return true;
+    }
+
+    /**
+     * Asks another player to be friends. The request is remembered locally either way, so it also works
+     * as an invitation on servers that block private messages.
+     *
+     * @return true when the marker message actually went out
+     */
+    public static boolean sendRequest(String name) {
+        boolean delivered = send(name, REQUEST);
+        PinFriends.recordSentRequest(name);
+        return delivered;
+    }
+
+    /** Accepts a pending request, telling the other side so they get the friendship too. */
+    public static void acceptRequest(String name) {
+        PinFriends.addFriend(name);
+        send(name, ACCEPT);
+    }
+
+    /** Declines a pending request and lets the other side drop theirs. */
+    public static void declineRequest(String name) {
+        PinFriends.removeRequest(name);
+        send(name, DECLINE);
     }
 
     /** Sends a reference to a friend as a share code their PinSpo turns back into a clickable pin. */
@@ -71,16 +99,41 @@ public final class PinChat {
         if (incoming == null) {
             return;
         }
-        PinShare.Shared shared = PinShare.decode(incoming.text());
+        String text = incoming.text();
+        switch (text) {
+            case REQUEST -> {
+                PinFriends.recordIncomingRequest(incoming.sender());
+                return;
+            }
+            case ACCEPT -> {
+                // Only an answer to a request this player actually sent turns into a friendship.
+                if (PinFriends.sentRequests().contains(incoming.sender())) {
+                    PinFriends.addFriend(incoming.sender());
+                }
+                return;
+            }
+            case DECLINE -> {
+                PinFriends.removeRequest(incoming.sender());
+                return;
+            }
+            default -> {
+            }
+        }
+        PinShare.Shared shared = PinShare.decode(text);
         if (shared == null) {
             // Plain text only counts as a PinSpo message once that player is a friend.
-            if (PinFriends.friends().contains(incoming.sender())) {
-                PinFriends.recordReceived(incoming.sender(), incoming.text(), null);
+            if (PinFriends.isFriend(incoming.sender())) {
+                PinFriends.recordReceived(incoming.sender(), text, null);
             }
             return;
         }
+        if (!PinFriends.isFriend(incoming.sender())) {
+            // A reference from a stranger arrives as a friend request instead of straight into the inbox.
+            PinFriends.recordIncomingRequest(incoming.sender());
+            return;
+        }
         for (PinterestApi.Pin pin : shared.pins()) {
-            PinFriends.recordReceived(incoming.sender(), incoming.text(), pin);
+            PinFriends.recordReceived(incoming.sender(), text, pin);
         }
     }
 
