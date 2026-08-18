@@ -18,10 +18,7 @@ import java.util.concurrent.ThreadLocalRandom;
  */
 public class PinBrowseScreen extends PinTabScreen {
 
-    /** Offered on the empty screen so a first search is one click away. */
-    private static final List<String> SUGGESTIONS = List.of(
-            "medieval castle", "cottagecore house", "japanese garden", "modern villa",
-            "fantasy treehouse", "desert temple");
+    private static final int SUGGESTION_COUNT = 6;
 
     private final PinGrid grid = new PinGrid();
 
@@ -34,6 +31,13 @@ public class PinBrowseScreen extends PinTabScreen {
     private boolean exhausted;
     @Nullable
     private Component error;
+    /**
+     * The home feed: instead of one search it walks a list of searches built from what the player keeps
+     * picking, so scrolling feels like a Pinterest home page rather than a single result set.
+     */
+    private final boolean home;
+    private List<String> feed = List.of();
+    private int feedIndex;
 
     public PinBrowseScreen(@Nullable Screen parent) {
         this(parent, "");
@@ -41,8 +45,18 @@ public class PinBrowseScreen extends PinTabScreen {
 
     /** Opens the search tab with {@code initialQuery} already typed in and searched. */
     public PinBrowseScreen(@Nullable Screen parent, String initialQuery) {
-        super(Component.translatable("screen.pinspo.browse"), parent);
+        this(parent, initialQuery, false);
+    }
+
+    /** The home feed: a mixed stream of pins from the player's own interests, with nothing typed in. */
+    public static PinBrowseScreen home(@Nullable Screen parent) {
+        return new PinBrowseScreen(parent, "", true);
+    }
+
+    private PinBrowseScreen(@Nullable Screen parent, String initialQuery, boolean home) {
+        super(Component.translatable(home ? "screen.pinspo.home" : "screen.pinspo.browse"), parent);
         this.query = initialQuery;
+        this.home = home;
     }
 
     @Override
@@ -59,7 +73,8 @@ public class PinBrowseScreen extends PinTabScreen {
                 Component.translatable("screen.pinspo.search"));
         searchBox.setHint(Component.translatable("screen.pinspo.search_hint"));
         searchBox.setMaxLength(120);
-        searchBox.setValue(query);
+        // The feed's own searches are internal, so the box stays empty and ready for a real one.
+        searchBox.setValue(home ? "" : query);
         addRenderableWidget(searchBox);
         setInitialFocus(searchBox);
 
@@ -69,6 +84,10 @@ public class PinBrowseScreen extends PinTabScreen {
                 Component.translatable("screen.pinspo.random"), this::pinRandom));
 
         grid.setBounds(MARGIN, CONTENT_TOP + 38, width - MARGIN, height - FOOTER_HEIGHT - 8);
+        if (home && feed.isEmpty()) {
+            feed = PinTaste.feedQueries();
+            query = feed.isEmpty() ? "" : feed.getFirst();
+        }
         if (!query.isEmpty() && grid.pins().isEmpty()) {
             loadMore();
         }
@@ -77,15 +96,16 @@ public class PinBrowseScreen extends PinTabScreen {
         }
     }
 
-    /** One-click example searches, centred under the prompt while the grid is empty. */
+    /** One-click searches — the player's own interests first — centred under the prompt while empty. */
     private void addSuggestions() {
+        List<String> suggestions = PinTaste.suggestions(SUGGESTION_COUNT);
         int rowWidth = 0;
-        for (String suggestion : SUGGESTIONS) {
+        for (String suggestion : suggestions) {
             rowWidth += font.width(suggestion) + 16 + 6;
         }
         int x = Math.max(MARGIN, (width - (rowWidth - 6)) / 2);
         int y = height / 2 + 14;
-        for (String suggestion : SUGGESTIONS) {
+        for (String suggestion : suggestions) {
             int buttonWidth = font.width(suggestion) + 16;
             if (x + buttonWidth > width - MARGIN) {
                 x = Math.max(MARGIN, (width - (rowWidth - 6)) / 2);
@@ -110,6 +130,11 @@ public class PinBrowseScreen extends PinTabScreen {
         }
         String newQuery = searchBox.getValue().trim();
         if (newQuery.isEmpty()) {
+            return;
+        }
+        if (home) {
+            // Searching leaves the feed rather than mixing its interests into the results.
+            minecraft.setScreen(new PinBrowseScreen(parent, newQuery));
             return;
         }
         query = newQuery;
@@ -148,15 +173,35 @@ public class PinBrowseScreen extends PinTabScreen {
                 return;
             }
             if (throwable != null || page == null) {
+                PinSpoClient.LOGGER.warn("Pinterest search failed", throwable);
+                if (home && advanceFeed()) {
+                    return;
+                }
                 error = Component.translatable("screen.pinspo.search_failed");
                 exhausted = true;
-                PinSpoClient.LOGGER.warn("Pinterest search failed", throwable);
                 return;
             }
             grid.addPins(page.pins());
             bookmark = page.bookmark();
+            if (home) {
+                // One page per interest keeps the feed mixed instead of turning into a single search.
+                advanceFeed();
+                return;
+            }
             exhausted = bookmark == null || page.pins().isEmpty();
         }));
+    }
+
+    /** Points the feed at its next search; false once every search in it has been used. */
+    private boolean advanceFeed() {
+        if (feedIndex + 1 >= feed.size()) {
+            exhausted = true;
+            return false;
+        }
+        feedIndex++;
+        query = feed.get(feedIndex);
+        bookmark = null;
+        return true;
     }
 
     @Override
@@ -168,7 +213,7 @@ public class PinBrowseScreen extends PinTabScreen {
             Component message = error != null
                     ? error
                     : loading
-                            ? Component.translatable("screen.pinspo.searching")
+                            ? Component.translatable(home ? "screen.pinspo.loading_feed" : "screen.pinspo.searching")
                             : Component.translatable("screen.pinspo.search_prompt");
             guiGraphics.drawCenteredString(font, message, width / 2, height / 2 - 14, COLOR_MUTED);
             if (query.isEmpty()) {
@@ -203,6 +248,7 @@ public class PinBrowseScreen extends PinTabScreen {
             minecraft.setScreen(new PinActionScreen(this, pin));
             return true;
         }
+        PinTaste.recordQuery(query);
         PinnedImage.pin(pin);
         onClose();
         return true;

@@ -59,7 +59,7 @@ public class PinImportScreen extends PinTabScreen {
         addRenderableWidget(PinButton.of(x + 112, CONTENT_TOP, 56, 20,
                 Component.translatable("screen.pinspo.choose_file"), this::chooseFile));
         addRenderableWidget(PinButton.of(x + 172, CONTENT_TOP, 54, 20,
-                Component.translatable("screen.pinspo.tab_save"), this::saveLink));
+                Component.translatable("screen.pinspo.save_short"), this::saveLink));
 
         grid.setPins(LocalImages.browsable());
         grid.setBounds(MARGIN, CONTENT_TOP + 38, width - MARGIN, height - FOOTER_HEIGHT - 8);
