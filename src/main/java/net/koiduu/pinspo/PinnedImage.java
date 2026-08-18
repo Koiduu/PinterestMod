@@ -71,9 +71,10 @@ public final class PinnedImage {
         hidden = newHidden;
     }
 
-    /** Pins a search result, also recording it in the recent-pin history. */
+    /** Pins a search result, recording it in the recent-pin history and in the taste profile. */
     public static void pin(PinterestApi.Pin pin) {
         PinHistory.add(pin);
+        PinTaste.record(pin);
         pin(pin.imageUrl());
     }
 

@@ -2,6 +2,7 @@ package net.koiduu.pinspo;
 
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 import org.jetbrains.annotations.Nullable;
 
@@ -62,18 +63,47 @@ public abstract class PinTabScreen extends Screen {
         });
     }
 
+    /**
+     * The chrome belongs to the background: extracting it with the rest of the screen put the bar's fill on
+     * top of the tab buttons, which is what made them look dimmed.
+     */
     @Override
-    public void extractRenderState(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTick) {
-        super.extractRenderState(guiGraphics, mouseX, mouseY, partialTick);
-        // Chrome drawn on top of the vanilla dim: a branded tab bar, a titled content area and a footer.
+    public void extractBackground(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTick) {
+        super.extractBackground(guiGraphics, mouseX, mouseY, partialTick);
         guiGraphics.fill(0, 0, width, TAB_HEIGHT + 12, PinTheme.BAR);
         guiGraphics.fill(0, TAB_HEIGHT + 12, width, TAB_HEIGHT + 13, PinTheme.BORDER);
         guiGraphics.fill(0, height - FOOTER_HEIGHT, width, height - FOOTER_HEIGHT + 1, PinTheme.BORDER);
         guiGraphics.fill(0, height - FOOTER_HEIGHT + 1, width, height, PinTheme.BAR);
+    }
 
+    @Override
+    public void extractRenderState(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTick) {
+        super.extractRenderState(guiGraphics, mouseX, mouseY, partialTick);
+        boolean overLogo = overLogo(mouseX, mouseY);
         guiGraphics.fill(MARGIN, 8, MARGIN + 3, 24, PinTheme.ACCENT);
-        guiGraphics.text(font, Component.literal("PinSpo"), MARGIN + 8, 12, PinTheme.TEXT, false);
+        guiGraphics.text(font, Component.literal("PinSpo"), MARGIN + 8, 12,
+                overLogo ? PinTheme.ACCENT : PinTheme.TEXT, false);
         guiGraphics.text(font, title, MARGIN, TAB_HEIGHT + 20, COLOR_TEXT, false);
+        if (overLogo) {
+            // The bar has no room next to the wordmark, so the hint goes in the empty left half of the footer.
+            guiGraphics.text(font, Component.translatable("screen.pinspo.open_home"),
+                    MARGIN, height - FOOTER_HEIGHT + 12, COLOR_MUTED, false);
+        }
+    }
+
+    /** The wordmark doubles as a home button, so it reacts to the mouse like one. */
+    private boolean overLogo(int mouseX, int mouseY) {
+        return mouseX >= MARGIN && mouseX <= MARGIN + 10 + font.width("PinSpo")
+                && mouseY >= 6 && mouseY <= 26;
+    }
+
+    @Override
+    public boolean mouseClicked(MouseButtonEvent event, boolean doubled) {
+        if (overLogo((int) event.x(), (int) event.y())) {
+            minecraft.setScreenAndShow(PinBrowseScreen.home(parent));
+            return true;
+        }
+        return super.mouseClicked(event, doubled);
     }
 
     /** Draws a subtle rounded-ish backing panel behind a region of content. */
