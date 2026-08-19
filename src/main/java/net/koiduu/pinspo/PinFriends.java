@@ -116,22 +116,27 @@ public final class PinFriends {
         return true;
     }
 
-    /** Files a request received from another player. Ignored when they are already a friend. */
-    public static void recordIncomingRequest(String rawName) {
+    /**
+     * Files a request received from another player. Ignored when they are already a friend.
+     *
+     * @return true when this is news, so it is worth telling the player about
+     */
+    public static boolean recordIncomingRequest(String rawName) {
         String name = rawName.trim();
         if (!PinSecurity.isPlayerName(name) || all().friends.contains(name)
                 || all().pending.size() >= MAX_FRIENDS) {
-            return;
+            return false;
         }
         // A request that crosses one the player already sent simply becomes a friendship.
         if (all().sent.contains(name)) {
-            addFriend(name);
-            return;
+            return addFriend(name);
         }
-        if (!all().pending.contains(name)) {
-            all().pending.add(name);
-            save();
+        if (all().pending.contains(name)) {
+            return false;
         }
+        all().pending.add(name);
+        save();
+        return true;
     }
 
     /** Drops a request in either direction, e.g. when it is declined or cancelled. */

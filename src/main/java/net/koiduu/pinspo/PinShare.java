@@ -27,6 +27,20 @@ public final class PinShare {
     private static final Pattern CODE = Pattern.compile(
             Pattern.quote(PREFIX) + "([^>\\s]{0,32})>((?:[0-9a-f]{6,64}\\.[a-z]{3,4}[ ]?)+)");
 
+    /**
+     * The chat form of a code. Servers with an advertising filter — Hypixel's especially — swallow a
+     * message containing {@code hash.jpg}, because it reads as a domain, so nothing sent this way carries a
+     * dot: the extension becomes a single letter and the hash travels in short groups.
+     */
+    private static final String CHAT_PREFIX = "PinSpo ref ";
+    private static final Pattern CHAT_CODE = Pattern.compile(
+            Pattern.quote(CHAT_PREFIX) + "([jpwg]) ((?:[0-9a-f]{1,8}(?: |$)){1,12})");
+    private static final int GROUP_LENGTH = 8;
+    /** Extension letters, kept deliberately tiny so a code stays short and unremarkable. */
+    private static final String[][] EXTENSIONS = {
+            {"j", "jpg"}, {"p", "png"}, {"w", "webp"}, {"g", "gif"}
+    };
+
     /** A shared folder: its name and the pins in it. */
     public record Shared(String name, List<PinterestApi.Pin> pins) {
     }
@@ -54,12 +68,70 @@ public final class PinShare {
         return code.toString();
     }
 
+    /**
+     * A reference written so a chat filter leaves it alone, or {@code ""} when this pin cannot travel.
+     * Only one reference fits per message, which is all a send to a friend ever needs.
+     */
+    public static String encodeChat(PinterestApi.Pin pin) {
+        String image = imageName(pin.imageUrl());
+        if (image == null) {
+            return "";
+        }
+        int dot = image.lastIndexOf('.');
+        String letter = letterFor(image.substring(dot + 1));
+        if (letter == null) {
+            return "";
+        }
+        String hash = image.substring(0, dot);
+        StringBuilder code = new StringBuilder(CHAT_PREFIX).append(letter);
+        for (int at = 0; at < hash.length(); at += GROUP_LENGTH) {
+            code.append(' ').append(hash, at, Math.min(hash.length(), at + GROUP_LENGTH));
+        }
+        return code.toString();
+    }
+
+    /** The reference in a chat-form code, or {@code null} when the message does not hold one. */
+    @Nullable
+    private static Shared decodeChat(String text) {
+        Matcher matcher = CHAT_CODE.matcher(text);
+        if (!matcher.find()) {
+            return null;
+        }
+        String extension = extensionFor(matcher.group(1));
+        if (extension == null) {
+            return null;
+        }
+        PinterestApi.Pin pin = toPin(matcher.group(2).replace(" ", ""), extension);
+        return pin == null ? null : new Shared("Shared", List.of(pin));
+    }
+
+    @Nullable
+    private static String letterFor(String extension) {
+        for (String[] pair : EXTENSIONS) {
+            if (pair[1].equals(extension)) {
+                return pair[0];
+            }
+        }
+        return null;
+    }
+
+    @Nullable
+    private static String extensionFor(String letter) {
+        for (String[] pair : EXTENSIONS) {
+            if (pair[0].equals(letter)) {
+                return pair[1];
+            }
+        }
+        return null;
+    }
+
     /** Parses the first share code found in {@code text}, or {@code null} when there is none. */
     @Nullable
     public static Shared decode(String text) {
         Matcher matcher = CODE.matcher(text);
         if (!matcher.find()) {
-            return null;
+            // Older PinSpo builds and clipboard codes use the long form; chat now uses the quiet one.
+            return decodeChat(text);
         }
         List<PinterestApi.Pin> pins = new ArrayList<>();
         Matcher images = IMAGE.matcher(matcher.group(2));
@@ -85,7 +157,7 @@ public final class PinShare {
 
     /** True when {@code text} contains a share code, used to spot PinSpo messages in chat. */
     public static boolean looksLikeCode(String text) {
-        return CODE.matcher(text).find();
+        return CODE.matcher(text).find() || CHAT_CODE.matcher(text).find();
     }
 
     /** Rebuilds a pin from a hash, rejecting anything that does not produce two allowed image URLs. */

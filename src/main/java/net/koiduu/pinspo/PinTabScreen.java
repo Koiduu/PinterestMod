@@ -46,8 +46,7 @@ public abstract class PinTabScreen extends Screen {
                 Math.min(88, (width - labelWidth - MARGIN) / Tab.values().length - 2));
         int x = labelWidth;
         for (Tab value : Tab.values()) {
-            PinButton button = new PinButton(x, 6, tabWidth, TAB_HEIGHT,
-                    Component.translatable("tab.pinspo." + value.name().toLowerCase()),
+            PinButton button = new PinButton(x, 6, tabWidth, TAB_HEIGHT, tabLabel(value),
                     PinButton.Style.TAB, () -> open(value));
             button.selected(value == tab());
             addRenderableWidget(button);
@@ -55,6 +54,13 @@ public abstract class PinTabScreen extends Screen {
         }
         addRenderableWidget(PinButton.primary(width - MARGIN - 80, height - FOOTER_HEIGHT + 6, 80, 20,
                 Component.translatable("gui.done"), this::onClose));
+    }
+
+    /** The Friends tab carries the number of requests waiting, so a new one is visible from any tab. */
+    private static Component tabLabel(Tab value) {
+        Component label = Component.translatable("tab.pinspo." + value.name().toLowerCase());
+        int waiting = value == Tab.FRIENDS ? PinFriends.pendingRequests().size() : 0;
+        return waiting == 0 ? label : Component.literal(label.getString() + " " + waiting);
     }
 
     private void open(Tab target) {
@@ -97,6 +103,7 @@ public abstract class PinTabScreen extends Screen {
             guiGraphics.drawString(font, Component.translatable("screen.pinspo.open_home"),
                     MARGIN, height - FOOTER_HEIGHT + 12, COLOR_MUTED, false);
         }
+        PinNotifications.render(guiGraphics, width);
         renderCredit(guiGraphics);
     }
 
