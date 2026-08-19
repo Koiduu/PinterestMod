@@ -1,7 +1,7 @@
 package net.koiduu.pinspo;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
 import net.minecraft.sounds.SoundEvents;
@@ -68,7 +68,7 @@ public final class PinNotifications {
     }
 
     /** Draws the live popups down the right-hand side, newest on top. */
-    public static void render(GuiGraphics guiGraphics, int screenWidth) {
+    public static void render(GuiGraphicsExtractor guiGraphics, int screenWidth) {
         if (popups.isEmpty()) {
             return;
         }
@@ -86,10 +86,10 @@ public final class PinNotifications {
             int x = screenWidth - MARGIN - WIDTH + Math.round(slide * (WIDTH + MARGIN));
             PinTheme.panel(guiGraphics, x, y, WIDTH, HEIGHT);
             guiGraphics.fill(x, y, x + 2, y + HEIGHT, PinTheme.ACCENT);
-            guiGraphics.drawString(font,
+            guiGraphics.text(font,
                     font.plainSubstrByWidth(popup.title().getString(), WIDTH - 12),
                     x + 7, y + 6, PinTheme.TEXT, false);
-            guiGraphics.drawString(font,
+            guiGraphics.text(font,
                     font.plainSubstrByWidth(popup.detail().getString(), WIDTH - 12),
                     x + 7, y + 18, PinTheme.TEXT_MUTED, false);
             y += HEIGHT + 4;
