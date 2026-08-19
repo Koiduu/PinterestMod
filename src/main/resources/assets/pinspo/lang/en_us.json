@@ -93,6 +93,8 @@
   "screen.pinspo.tab_send": "Send to friend",
   "screen.pinspo.tab_save": "Save to folder",
   "screen.pinspo.save_short": "To folder",
+  "screen.pinspo.checking_name": "Looking up %s...",
+  "screen.pinspo.unknown_player": "There's no Minecraft player called %s.",
   "screen.pinspo.home": "Home feed",
   "screen.pinspo.open_home": "Click PinSpo for your home feed",
   "screen.pinspo.loading_feed": "Building your feed...",

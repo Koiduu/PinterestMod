@@ -3,7 +3,9 @@ package net.koiduu.pinspo;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.MouseButtonEvent;
+import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
 import org.jetbrains.annotations.Nullable;
 
 /** Base for the PinSpo screens, giving them a shared tab bar, header and footer. */
@@ -17,6 +19,11 @@ public abstract class PinTabScreen extends Screen {
 
     protected static final int COLOR_TEXT = PinTheme.TEXT;
     protected static final int COLOR_MUTED = PinTheme.TEXT_MUTED;
+
+    /** Koidu's koi, drawn next to the wordmark. */
+    private static final Identifier LOGO = Identifier.fromNamespaceAndPath("pinspo", "textures/gui/koi.png");
+    private static final int LOGO_SIZE = 18;
+    private static final String CREDIT = "Made by Koidu";
 
     public enum Tab {
         SEARCH, IMPORT, SAVED, FRIENDS, SETTINGS
@@ -34,7 +41,7 @@ public abstract class PinTabScreen extends Screen {
 
     /** Adds the tab bar and the Done button; subclasses call this from {@code init}. */
     protected void addTabs() {
-        int labelWidth = MARGIN + 58;
+        int labelWidth = MARGIN + LOGO_SIZE + 46;
         int tabWidth = Math.max(46,
                 Math.min(88, (width - labelWidth - MARGIN) / Tab.values().length - 2));
         int x = labelWidth;
@@ -80,8 +87,9 @@ public abstract class PinTabScreen extends Screen {
     public void extractRenderState(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTick) {
         super.extractRenderState(guiGraphics, mouseX, mouseY, partialTick);
         boolean overLogo = overLogo(mouseX, mouseY);
-        guiGraphics.fill(MARGIN, 8, MARGIN + 3, 24, PinTheme.ACCENT);
-        guiGraphics.text(font, Component.literal("PinSpo"), MARGIN + 8, 12,
+        guiGraphics.blit(RenderPipelines.GUI_TEXTURED, LOGO, MARGIN, 7, 0.0F, 0.0F,
+                LOGO_SIZE, LOGO_SIZE, 64, 64, 64, 64);
+        guiGraphics.text(font, Component.literal("PinSpo"), MARGIN + LOGO_SIZE + 3, 12,
                 overLogo ? PinTheme.ACCENT : PinTheme.TEXT, false);
         guiGraphics.text(font, title, MARGIN, TAB_HEIGHT + 20, COLOR_TEXT, false);
         if (overLogo) {
@@ -89,11 +97,22 @@ public abstract class PinTabScreen extends Screen {
             guiGraphics.text(font, Component.translatable("screen.pinspo.open_home"),
                     MARGIN, height - FOOTER_HEIGHT + 12, COLOR_MUTED, false);
         }
+        renderCredit(guiGraphics);
+    }
+
+    /** A half-size signature along the very bottom edge: there if you look for it, quiet if you do not. */
+    private void renderCredit(GuiGraphicsExtractor guiGraphics) {
+        guiGraphics.pose().pushMatrix();
+        guiGraphics.pose().scale(0.5F, 0.5F);
+        // Halved coordinates, so the line lands in the last few pixels of the bottom-right corner.
+        guiGraphics.text(font, CREDIT,
+                (width - MARGIN) * 2 - font.width(CREDIT), (height - 6) * 2, PinTheme.CREDIT, false);
+        guiGraphics.pose().popMatrix();
     }
 
     /** The wordmark doubles as a home button, so it reacts to the mouse like one. */
     private boolean overLogo(int mouseX, int mouseY) {
-        return mouseX >= MARGIN && mouseX <= MARGIN + 10 + font.width("PinSpo")
+        return mouseX >= MARGIN && mouseX <= MARGIN + LOGO_SIZE + 5 + font.width("PinSpo")
                 && mouseY >= 6 && mouseY <= 26;
     }
 
