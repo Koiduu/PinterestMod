@@ -11,6 +11,7 @@
     "sources": "https://github.com/Koiduu/PinterestMod"
   },
   "license": "MIT",
+  "icon": "assets/pinspo/icon.png",
   "environment": "client",
   "entrypoints": {
     "client": [

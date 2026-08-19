@@ -12,6 +12,8 @@ public final class PinTheme {
     public static final int TEXT_SOFT = 0xFFEFF1F5;
     public static final int TEXT_MUTED = 0xFFB4BAC3;
     public static final int TEXT_DISABLED = 0xFF7C818A;
+    /** Barely above the bar it sits on: the signature should be found, not read. */
+    public static final int CREDIT = 0xFF3E3E48;
 
     public static final int BACKDROP = 0xE6121216;
     public static final int BAR = 0xF01A1A20;

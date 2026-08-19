@@ -167,8 +167,25 @@ public class PinFriendsScreen extends PinTabScreen {
             rebuild();
             return;
         }
+        // Mojang is asked first, so a typo is caught instead of silently messaging nobody.
+        feedback = Component.translatable("screen.pinspo.checking_name", name);
+        MojangNames.exists(name).thenAccept(exists -> minecraft.execute(() -> {
+            if (minecraft.screen != this) {
+                return;
+            }
+            if (!exists) {
+                feedback = Component.translatable("screen.pinspo.unknown_player", name);
+                return;
+            }
+            sendRequest(name);
+        }));
+    }
+
+    private void sendRequest(String name) {
         boolean delivered = PinChat.sendRequest(name);
-        addBox.setValue("");
+        if (addBox != null) {
+            addBox.setValue("");
+        }
         feedback = Component.translatable(delivered
                 ? "screen.pinspo.request_sent"
                 : "screen.pinspo.request_offline", name);
