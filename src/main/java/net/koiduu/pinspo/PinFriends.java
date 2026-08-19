@@ -24,7 +24,7 @@ public final class PinFriends {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final Path PATH = FabricLoader.getInstance().getConfigDir().resolve("pinspo-friends.json");
     /** Messages kept per conversation; older ones are dropped. */
-    private static final int MAX_MESSAGES = 100;
+    private static final int MAX_MESSAGES = 30;
     private static final int MAX_FRIENDS = 100;
 
     /**
@@ -75,6 +75,41 @@ public final class PinFriends {
         return all().friends.contains(name);
     }
 
+    /** Players whose requests and messages PinSpo throws away. */
+    public static List<String> blocked() {
+        return List.copyOf(all().blocked);
+    }
+
+    public static boolean isBlocked(String name) {
+        return all().blocked.contains(name);
+    }
+
+    /**
+     * Blocks a player: the friendship, the conversation and any request go with them, and nothing they
+     * send afterwards is filed again.
+     *
+     * @return true when the name was valid and is now blocked
+     */
+    public static boolean block(String rawName) {
+        String name = rawName.trim();
+        if (!PinSecurity.isPlayerName(name) || all().blocked.size() >= MAX_FRIENDS) {
+            return false;
+        }
+        removeFriend(name);
+        if (!all().blocked.contains(name)) {
+            all().blocked.add(name);
+            save();
+        }
+        return true;
+    }
+
+    /** Lifts a block. The friendship is not restored: they have to be added again. */
+    public static void unblock(String name) {
+        if (all().blocked.remove(name)) {
+            save();
+        }
+    }
+
     /**
      * Adds a friend by Minecraft name, without going through a request. Used when a request is accepted
      * and when a code is imported by hand.
@@ -83,7 +118,8 @@ public final class PinFriends {
      */
     public static boolean addFriend(String rawName) {
         String name = rawName.trim();
-        if (!PinSecurity.isPlayerName(name) || all().friends.size() >= MAX_FRIENDS) {
+        if (!PinSecurity.isPlayerName(name) || all().blocked.contains(name)
+                || all().friends.size() >= MAX_FRIENDS) {
             return false;
         }
         boolean changed = all().pending.remove(name);
@@ -105,8 +141,8 @@ public final class PinFriends {
      */
     public static boolean recordSentRequest(String rawName) {
         String name = rawName.trim();
-        if (!PinSecurity.isPlayerName(name) || all().sent.size() >= MAX_FRIENDS
-                || all().friends.contains(name)) {
+        if (!PinSecurity.isPlayerName(name) || all().blocked.contains(name)
+                || all().sent.size() >= MAX_FRIENDS || all().friends.contains(name)) {
             return false;
         }
         if (!all().sent.contains(name)) {
@@ -123,8 +159,8 @@ public final class PinFriends {
      */
     public static boolean recordIncomingRequest(String rawName) {
         String name = rawName.trim();
-        if (!PinSecurity.isPlayerName(name) || all().friends.contains(name)
-                || all().pending.size() >= MAX_FRIENDS) {
+        if (!PinSecurity.isPlayerName(name) || all().blocked.contains(name)
+                || all().friends.contains(name) || all().pending.size() >= MAX_FRIENDS) {
             return false;
         }
         // A request that crosses one the player already sent simply becomes a friendship.
@@ -180,7 +216,7 @@ public final class PinFriends {
 
     private static void append(Message message) {
         String friend = message.friend();
-        if (!PinSecurity.isPlayerName(friend)) {
+        if (!PinSecurity.isPlayerName(friend) || all().blocked.contains(friend)) {
             return;
         }
         List<Message> chat = all().chats.computeIfAbsent(friend, key -> new ArrayList<>());
@@ -228,6 +264,8 @@ public final class PinFriends {
 
     private static final class Stored {
         List<String> friends = new ArrayList<>();
+        /** Players who are ignored outright. */
+        List<String> blocked = new ArrayList<>();
         /** Requests waiting for this player to answer. */
         List<String> pending = new ArrayList<>();
         /** Requests this player sent and that have not been answered. */
@@ -238,10 +276,14 @@ public final class PinFriends {
         /** Drops anything a hand-edited or older file might contain that the screens cannot handle. */
         void normalise() {
             friends = names(friends);
+            blocked = names(blocked);
             pending = names(pending);
             sent = names(sent);
+            friends.removeAll(blocked);
             pending.removeAll(friends);
             sent.removeAll(friends);
+            pending.removeAll(blocked);
+            sent.removeAll(blocked);
             chats = chats == null ? new LinkedHashMap<>() : new LinkedHashMap<>(chats);
             unread = unread == null ? new LinkedHashMap<>() : new LinkedHashMap<>(unread);
             chats.entrySet().removeIf(entry ->
@@ -255,8 +297,15 @@ public final class PinFriends {
                     cleaned.add(new Message(friend, message.outgoing(),
                             PinSecurity.cleanText(message.text()), message.pin(), message.sentAt()));
                 }
-                return cleaned;
+                // A cap lowered in an update has to bite on load too, not only on the next message.
+                return cleaned.size() <= MAX_MESSAGES
+                        ? cleaned
+                        : new ArrayList<>(cleaned.subList(cleaned.size() - MAX_MESSAGES, cleaned.size()));
             });
+            for (String name : blocked) {
+                chats.remove(name);
+                unread.remove(name);
+            }
         }
 
         private static List<String> names(@Nullable List<String> raw) {
