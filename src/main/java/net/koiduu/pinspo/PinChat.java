@@ -120,6 +120,9 @@ public final class PinChat {
             reportRefusal(message);
             return;
         }
+        if (PinFriends.isBlocked(incoming.sender())) {
+            return;
+        }
         String text = incoming.text();
         switch (text) {
             case REQUEST, OLD_REQUEST -> {

@@ -111,9 +111,8 @@ public abstract class PinTabScreen extends Screen {
     private void renderCredit(GuiGraphicsExtractor guiGraphics) {
         guiGraphics.pose().pushMatrix();
         guiGraphics.pose().scale(0.5F, 0.5F);
-        // Halved coordinates, so the line lands in the last few pixels of the bottom-right corner.
-        guiGraphics.text(font, CREDIT,
-                (width - MARGIN) * 2 - font.width(CREDIT), (height - 6) * 2, PinTheme.CREDIT, false);
+        // Halved coordinates, so the line lands in the last few pixels of the bottom-left corner.
+        guiGraphics.text(font, CREDIT, MARGIN * 2, (height - 6) * 2, PinTheme.CREDIT, false);
         guiGraphics.pose().popMatrix();
     }
 

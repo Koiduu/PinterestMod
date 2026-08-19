@@ -85,18 +85,22 @@ public class PinFriendsScreen extends PinTabScreen {
                 Component.literal("+"), this::addFriend));
         addRequestButtons();
 
-        PinButton sendPin = PinButton.primary(chatLeft, CONTENT_TOP, 120, 18,
+        // Four buttons share the width above the conversation, so none of them runs off a small window.
+        int actionWidth = Math.max(48, (width - MARGIN - chatLeft - 12) / 4);
+        PinButton sendPin = PinButton.primary(chatLeft, CONTENT_TOP, actionWidth, 18,
                 Component.translatable("screen.pinspo.send_pin"), this::sendCurrentPin);
         sendPin.active = selected != null && !PinHistory.entries().isEmpty();
         addRenderableWidget(sendPin);
-        PinButton copyCode = PinButton.of(chatLeft + 124, CONTENT_TOP, 96, 18,
+        PinButton copyCode = PinButton.of(chatLeft + actionWidth + 4, CONTENT_TOP, actionWidth, 18,
                 Component.translatable("screen.pinspo.copy_code"), this::copyCurrentPin);
         copyCode.active = !PinHistory.entries().isEmpty();
         addRenderableWidget(copyCode);
-        PinButton paste = PinButton.of(chatLeft + 224, CONTENT_TOP, 96, 18,
+        PinButton paste = PinButton.of(chatLeft + (actionWidth + 4) * 2, CONTENT_TOP, actionWidth, 18,
                 Component.translatable("screen.pinspo.paste_code"), this::pasteCode);
         paste.active = selected != null;
         addRenderableWidget(paste);
+        addRenderableWidget(PinButton.of(chatLeft + (actionWidth + 4) * 3, CONTENT_TOP, actionWidth, 18,
+                blockedLabel(), () -> minecraft.setScreenAndShow(new PinBlockedScreen(this))));
 
         messageBox = new EditBox(font, chatLeft, chatBottom + 4, width - MARGIN - chatLeft - 54, 18,
                 Component.translatable("screen.pinspo.message"));
@@ -134,6 +138,13 @@ public class PinFriendsScreen extends PinTabScreen {
         }
     }
 
+    /** The Blocked button carries its count, so the list is worth opening only when it has something. */
+    private Component blockedLabel() {
+        int blocked = PinFriends.blocked().size();
+        Component label = Component.translatable("screen.pinspo.blocked");
+        return blocked == 0 ? label : Component.literal(label.getString() + " " + blocked);
+    }
+
     private int requestsHeight() {
         if (requests.isEmpty()) {
             return 0;
@@ -150,6 +161,10 @@ public class PinFriendsScreen extends PinTabScreen {
         String name = addBox.getValue().trim();
         if (!PinSecurity.isPlayerName(name)) {
             feedback = Component.translatable("screen.pinspo.bad_name");
+            return;
+        }
+        if (PinFriends.isBlocked(name)) {
+            feedback = Component.translatable("screen.pinspo.is_blocked", name);
             return;
         }
         if (PinFriends.isFriend(name)) {
@@ -432,11 +447,11 @@ public class PinFriendsScreen extends PinTabScreen {
             int index = (int) ((event.y() - friendsTop) / FRIEND_ROW_HEIGHT);
             if (index >= 0 && index < friends.size()) {
                 if (event.button() == GLFW.GLFW_MOUSE_BUTTON_RIGHT) {
-                    PinFriends.removeFriend(friends.get(index));
-                    selected = null;
-                } else {
-                    selected = friends.get(index);
+                    // Unfriending and blocking used to happen on a single right-click; now they are asked for.
+                    minecraft.setScreenAndShow(new PinFriendOptionsScreen(this, friends.get(index)));
+                    return true;
                 }
+                selected = friends.get(index);
                 feedback = null;
                 rebuild();
             }
