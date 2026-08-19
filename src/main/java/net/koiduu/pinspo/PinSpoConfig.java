@@ -31,8 +31,12 @@ public class PinSpoConfig {
     public float scale = 0.3F;
     public float opacity = 0.85F;
     public boolean preferOriginalResolution = false;
-    /** Minutes of the browser being unused before it is disposed; 0 disables idle disposal. */
-    public int idleDisposeMinutes = 5;
+    /** Currently pinned image URL; re-pinned from the on-disk cache on startup. */
+    public String pinnedUrl = "";
+    /** Watch chat for Hypixel Build Battle themes and react to them automatically. */
+    public boolean buildBattleMode = false;
+    /** In Build Battle mode, pin a random matching image instead of opening the search screen. */
+    public boolean buildBattleRandomPin = false;
 
     public static PinSpoConfig get() {
         if (instance == null) {
@@ -72,11 +76,17 @@ public class PinSpoConfig {
         if (corner == null) {
             corner = Corner.TOP_RIGHT;
         }
+        if (pinnedUrl == null) {
+            pinnedUrl = "";
+        }
         offsetX = clamp01(offsetX);
         offsetY = clamp01(offsetY);
         scale = Math.clamp(scale, 0.05F, 1.0F);
         opacity = Math.clamp(opacity, 0.05F, 1.0F);
-        idleDisposeMinutes = Math.clamp(idleDisposeMinutes, 0, 60);
+        if (!pinnedUrl.isEmpty() && !PinSecurity.isPinnableUrl(pinnedUrl)) {
+            // A hand-edited config must not be able to point the overlay at an arbitrary address.
+            pinnedUrl = "";
+        }
     }
 
     private static float clamp01(float value) {
