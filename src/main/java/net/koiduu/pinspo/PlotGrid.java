@@ -48,17 +48,21 @@ public final class PlotGrid {
         }
     }
 
+    /** Ticks between attempts while waiting for a plot, so a failed scan is not retried every tick. */
+    private static final int RETRY_TICKS = 20;
+
     @Nullable
     private static Plot plot;
     /** Hidden without being forgotten, e.g. during Build Battle voting. */
     private static boolean hidden;
+    private static int ticksUntilScan;
 
     private PlotGrid() {
     }
 
     /**
-     * Steps to the next floor guide, scanning for the plot when one is switched on. Returns the guide now
-     * in use; a null plot afterwards means no floor could be found.
+     * Steps to the next floor guide, keeping the plot already measured. Returns the guide now in use; a
+     * null plot afterwards means no floor has been found yet.
      */
     public static PinGuide.Guide cycle() {
         PinSpoConfig config = PinSpoConfig.get();
@@ -67,14 +71,46 @@ public final class PlotGrid {
         hidden = false;
         if (config.floorGuide == PinGuide.Guide.OFF) {
             plot = null;
-        } else {
+        } else if (plot == null) {
             scan();
         }
         return config.floorGuide;
     }
 
+    /** Measures the floor again from where the player is standing now. */
+    public static void rescan() {
+        hidden = false;
+        scan();
+    }
+
+    /**
+     * Measures the plot as soon as the player is standing on one and then leaves it alone, so the lines stay
+     * where the round started instead of following the player around their build.
+     */
+    public static void tick(Minecraft client) {
+        if (plot != null || PinSpoConfig.get().floorGuide == PinGuide.Guide.OFF) {
+            return;
+        }
+        if (client.level == null || client.player == null) {
+            ticksUntilScan = 0;
+            return;
+        }
+        if (ticksUntilScan > 0) {
+            ticksUntilScan--;
+            return;
+        }
+        ticksUntilScan = RETRY_TICKS;
+        scan();
+    }
+
     public static boolean hasPlot() {
         return plot != null;
+    }
+
+    /** Side lengths of the measured plot in blocks, or an empty array when nothing is measured. */
+    public static int[] size() {
+        Plot current = plot;
+        return current == null ? new int[0] : new int[]{current.width(), current.depth()};
     }
 
     public static void setHidden(boolean newHidden) {
@@ -84,10 +120,11 @@ public final class PlotGrid {
     /** Forgets the plot, e.g. when leaving a server or when a new round starts. */
     public static void reset() {
         plot = null;
+        ticksUntilScan = 0;
     }
 
     /**
-     * Finds the platform under the player: the block the floor is made of (white concrete, on Hypixel)
+     * Finds the platform under the player: the block the floor is made of (white terracotta, on Hypixel)
      * flood-filled outwards, which gives the plot's bounds without asking the server anything.
      */
     public static void scan() {

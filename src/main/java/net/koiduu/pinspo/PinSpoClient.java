@@ -105,12 +105,25 @@ public class PinSpoClient implements ClientModInitializer {
                         Component.translatable("message.pinspo.guide", guide.label()), true);
             }
         }
+        PlotGrid.tick(client);
         while (PLOT_KEY.consumeClick()) {
-            PinGuide.Guide guide = PlotGrid.cycle();
+            // Sneaking re-measures where the player stands instead of stepping to the next guide, because
+            // the plot is otherwise measured once and left alone while the player moves around their build.
+            boolean remeasure = client.player != null && client.player.isShiftKeyDown();
+            if (remeasure) {
+                PlotGrid.rescan();
+            }
+            PinGuide.Guide guide = remeasure ? PinSpoConfig.get().floorGuide : PlotGrid.cycle();
             if (client.player != null) {
-                Component message = guide != PinGuide.Guide.OFF && !PlotGrid.hasPlot()
-                        ? Component.translatable("message.pinspo.no_plot")
-                        : Component.translatable("message.pinspo.plot_guide", guide.label());
+                int[] size = PlotGrid.size();
+                Component message;
+                if (guide != PinGuide.Guide.OFF && size.length == 0) {
+                    message = Component.translatable("message.pinspo.no_plot");
+                } else if (remeasure) {
+                    message = Component.translatable("message.pinspo.plot_measured", size[0], size[1]);
+                } else {
+                    message = Component.translatable("message.pinspo.plot_guide", guide.label());
+                }
                 client.player.displayClientMessage(message, true);
             }
         }
