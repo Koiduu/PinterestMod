@@ -41,6 +41,7 @@ public final class BuildBattleMode {
         if (VOTING.matcher(text).find()) {
             currentTheme = null;
             PinnedImage.setHidden(true);
+            PlotGrid.setHidden(true);
             return;
         }
         Matcher matcher = THEME.matcher(text);
@@ -53,6 +54,11 @@ public final class BuildBattleMode {
         }
         currentTheme = theme;
         PinnedImage.setHidden(false);
+        // A new round means a new plot, so the floor guide is measured again where the player now stands.
+        PlotGrid.setHidden(false);
+        if (PinSpoConfig.get().floorGuide != PinGuide.Guide.OFF) {
+            PlotGrid.scan();
+        }
         onThemeChosen(theme);
     }
 
@@ -86,6 +92,7 @@ public final class BuildBattleMode {
     /** Resets the round state, e.g. when leaving a server. */
     public static void reset() {
         currentTheme = null;
+        PlotGrid.reset();
     }
 
     private static void notifyPlayer(Component message) {

@@ -111,6 +111,43 @@ public class PinSettingsScreen extends PinTabScreen {
                             config.showCredit = value;
                             config.save();
                         }));
+        y += WIDGET_HEIGHT + SPACING;
+        addRenderableWidget(CycleButton
+                .builder(PinGuide.Guide::label, config.guide)
+                .withValues(PinGuide.Guide.values())
+                .create(rightX, y, columnWidth, WIDGET_HEIGHT,
+                        Component.translatable("option.pinspo.guide"),
+                        (button, guide) -> {
+                            config.guide = guide;
+                            config.save();
+                        }));
+        y += WIDGET_HEIGHT + SPACING;
+        addRenderableWidget(CycleButton
+                .builder(PinGuide.Guide::label, config.floorGuide)
+                .withValues(PinGuide.Guide.OFF, PinGuide.Guide.THIRDS, PinGuide.Guide.GOLDEN,
+                        PinGuide.Guide.DIAGONALS, PinGuide.Guide.CENTRE, PinGuide.Guide.QUARTERS,
+                        PinGuide.Guide.GRID)
+                .create(rightX, y, columnWidth, WIDGET_HEIGHT,
+                        Component.translatable("option.pinspo.plot_guide"),
+                        (button, guide) -> {
+                            config.floorGuide = guide;
+                            config.save();
+                            if (guide == PinGuide.Guide.OFF) {
+                                PlotGrid.reset();
+                            } else {
+                                PlotGrid.setHidden(false);
+                                PlotGrid.scan();
+                            }
+                        }));
+        y += WIDGET_HEIGHT + SPACING;
+        addRenderableWidget(CycleButton
+                .onOffBuilder(config.blurBackdrop)
+                .create(rightX, y, columnWidth, WIDGET_HEIGHT,
+                        Component.translatable("option.pinspo.blur_backdrop"),
+                        (button, value) -> {
+                            config.blurBackdrop = value;
+                            config.save();
+                        }));
     }
 
     private void rebuild() {
