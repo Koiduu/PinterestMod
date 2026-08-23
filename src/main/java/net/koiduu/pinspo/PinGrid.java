@@ -13,6 +13,8 @@ public class PinGrid {
 
     private static final int CELL_PADDING = 4;
     private static final int MIN_CELL_WIDTH = 96;
+    /** Strip along the bottom of a cell kept free for the image owner's name. */
+    private static final int CREDIT_HEIGHT = 7;
 
     private final List<PinterestApi.Pin> pins = new ArrayList<>();
 
@@ -105,16 +107,17 @@ public class PinGrid {
                     PinTheme.TEXT_DISABLED);
             return;
         }
+        int imageHeight = cellHeight - CREDIT_HEIGHT;
         float fit = Math.min(
                 (float) (cellWidth - 2) / thumbnail.width(),
-                (float) (cellHeight - 2) / thumbnail.height());
+                (float) (imageHeight - 2) / thumbnail.height());
         int drawWidth = Math.max(1, Math.round(thumbnail.width() * fit));
         int drawHeight = Math.max(1, Math.round(thumbnail.height() * fit));
         guiGraphics.blit(
                 RenderPipelines.GUI_TEXTURED,
                 thumbnail.texture(),
                 x + (cellWidth - drawWidth) / 2,
-                y + (cellHeight - drawHeight) / 2,
+                y + (imageHeight - drawHeight) / 2,
                 0.0F,
                 0.0F,
                 drawWidth,
@@ -124,12 +127,26 @@ public class PinGrid {
                 thumbnail.width(),
                 thumbnail.height(),
                 0xFFFFFFFF);
+        renderCredit(guiGraphics, font, pin, x, y + imageHeight);
         if (hovered) {
-            guiGraphics.fill(x + 1, y + cellHeight - 12, x + cellWidth - 1, y + cellHeight - 1, 0xD0121216);
-            guiGraphics.fill(x + 1, y + cellHeight - 13, x + cellWidth - 1, y + cellHeight - 12, PinTheme.ACCENT);
+            guiGraphics.fill(x + 1, y + imageHeight - 12, x + cellWidth - 1, y + imageHeight - 1, 0xD0121216);
+            guiGraphics.fill(x + 1, y + imageHeight - 13, x + cellWidth - 1, y + imageHeight - 12, PinTheme.ACCENT);
             guiGraphics.text(font, font.plainSubstrByWidth(pin.title(), cellWidth - 8),
-                    x + 4, y + cellHeight - 10, PinTheme.TEXT, false);
+                    x + 4, y + imageHeight - 10, PinTheme.TEXT, false);
         }
+    }
+
+    /** Half-scale attribution under the thumbnail, so it reads as a caption rather than part of the UI. */
+    private void renderCredit(GuiGraphicsExtractor guiGraphics, Font font, PinterestApi.Pin pin, int x, int y) {
+        String credit = pin.credit();
+        if (credit == null || !PinSpoConfig.get().showCredit) {
+            return;
+        }
+        guiGraphics.pose().pushMatrix();
+        guiGraphics.pose().scale(0.5F, 0.5F);
+        guiGraphics.text(font, font.plainSubstrByWidth(credit, (cellWidth - 8) * 2),
+                (x + 4) * 2, (y + 1) * 2, PinTheme.TEXT_DISABLED, false);
+        guiGraphics.pose().popMatrix();
     }
 
     @Nullable

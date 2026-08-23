@@ -3,6 +3,7 @@ package net.koiduu.pinspo;
 import com.mojang.blaze3d.platform.NativeImage;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.client.renderer.texture.DynamicTexture;
@@ -75,14 +76,19 @@ public final class PinnedImage {
     public static void pin(PinterestApi.Pin pin) {
         PinHistory.add(pin);
         PinTaste.record(pin);
-        pin(pin.imageUrl());
+        pin(pin.imageUrl(), pin.credit());
     }
 
     /** Resolves and downloads {@code url}, replacing any currently pinned image once it arrives. */
     public static void pin(String url) {
+        pin(url, null);
+    }
+
+    public static void pin(String url, @Nullable String credit) {
         hidden = false;
         PinSpoConfig config = PinSpoConfig.get();
         config.pinnedUrl = url;
+        config.pinnedCredit = credit == null ? "" : credit;
         config.save();
         load(url);
     }
@@ -343,6 +349,7 @@ public final class PinnedImage {
         };
 
         int alpha = Math.clamp(Math.round(config.opacity * 255.0F), 0, 255);
+        renderCredit(guiGraphics, config, x, y + height, width, alpha);
         guiGraphics.blit(
                 RenderPipelines.GUI_TEXTURED,
                 TEXTURE_ID,
@@ -356,6 +363,20 @@ public final class PinnedImage {
                 height,
                 alpha << 24 | 0xFFFFFF
         );
+    }
+
+    /** Half-scale attribution tucked under the overlay, fading with the overlay's own opacity. */
+    private static void renderCredit(GuiGraphicsExtractor guiGraphics, PinSpoConfig config,
+                                    int x, int y, int width, int alpha) {
+        if (!config.showCredit || config.pinnedCredit.isEmpty()) {
+            return;
+        }
+        Font font = Minecraft.getInstance().font;
+        guiGraphics.pose().pushMatrix();
+        guiGraphics.pose().scale(0.5F, 0.5F);
+        guiGraphics.text(font, font.plainSubstrByWidth(config.pinnedCredit, width * 2),
+                x * 2, (y + 1) * 2, alpha << 24 | (PinTheme.TEXT_MUTED & 0xFFFFFF), false);
+        guiGraphics.pose().popMatrix();
     }
 
     private static void notifyPlayer(String translationKey) {

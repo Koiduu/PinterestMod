@@ -102,6 +102,15 @@ public class PinSettingsScreen extends PinTabScreen {
                             config.buildBattleRandomPin = value;
                             config.save();
                         }));
+        y += WIDGET_HEIGHT + SPACING;
+        addRenderableWidget(CycleButton
+                .onOffBuilder(config.showCredit)
+                .create(rightX, y, columnWidth, WIDGET_HEIGHT,
+                        Component.translatable("option.pinspo.show_credit"),
+                        (button, value) -> {
+                            config.showCredit = value;
+                            config.save();
+                        }));
     }
 
     private void rebuild() {
