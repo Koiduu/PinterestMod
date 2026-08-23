@@ -423,8 +423,8 @@ public final class PinnedImage {
         };
 
         int alpha = Math.clamp(Math.round(config.opacity * 255.0F), 0, 255);
-        renderCredit(guiGraphics, config, x, y + height, width, alpha);
         renderBackdrop(guiGraphics, config, x, y, width, height, alpha);
+        renderCredit(guiGraphics, config, x, y + height, width, alpha);
         guiGraphics.blit(
                 RenderPipelines.GUI_TEXTURED,
                 TEXTURE_ID,
