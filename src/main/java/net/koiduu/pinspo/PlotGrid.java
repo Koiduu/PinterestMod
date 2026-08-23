@@ -31,7 +31,11 @@ public final class PlotGrid {
     private static final int MAX_DROP = 8;
     private static final int MIN_SIDE = 3;
     private static final int LINE_COLOUR = 0xB0FFFFFF;
+    /** The vertical lattice is dimmer than the floor, so the plot's own surface stays the clearest part. */
+    private static final int VERTICAL_COLOUR = 0x70FFFFFF;
     private static final float LINE_WIDTH = 4.0F;
+    /** Heights the vertical guide steps through; 0 means "as tall as the plot is wide". */
+    private static final int[] HEIGHTS = {0, 8, 12, 16, 24, 32, 48};
     /** Lifted off the surface so the lines never z-fight with the floor blocks. */
     private static final float LIFT = 0.02F;
 
@@ -74,6 +78,46 @@ public final class PlotGrid {
             scan();
         }
         return config.floorGuide;
+    }
+
+    /** Turns the wall lattice on or off, switching the floor guide on too if it was off. */
+    public static boolean toggleVertical() {
+        PinSpoConfig config = PinSpoConfig.get();
+        config.plotVertical = !config.plotVertical;
+        if (config.plotVertical && config.floorGuide == PinGuide.Guide.OFF) {
+            // Vertical lines are divisions of the same guide, so there has to be a guide to divide.
+            config.floorGuide = PinGuide.Guide.THIRDS;
+        }
+        config.save();
+        hidden = false;
+        if (config.plotVertical && plot == null) {
+            scan();
+        }
+        return config.plotVertical;
+    }
+
+    /** Steps the wall lattice to the next height, returning the height in blocks it now uses. */
+    public static int cycleVerticalHeight() {
+        PinSpoConfig config = PinSpoConfig.get();
+        int index = 0;
+        for (int i = 0; i < HEIGHTS.length; i++) {
+            if (HEIGHTS[i] == config.plotVerticalHeight) {
+                index = i;
+                break;
+            }
+        }
+        config.plotVerticalHeight = HEIGHTS[(index + 1) % HEIGHTS.length];
+        config.save();
+        return verticalHeight(plot);
+    }
+
+    /** The wall lattice's height in blocks: the configured one, or the plot's shorter side when automatic. */
+    private static int verticalHeight(@Nullable Plot current) {
+        int configured = PinSpoConfig.get().plotVerticalHeight;
+        if (configured > 0) {
+            return configured;
+        }
+        return current == null ? 16 : Math.min(current.width(), current.depth());
     }
 
     /** Measures the floor again from where the player is standing now. */
@@ -208,25 +252,29 @@ public final class PlotGrid {
         float east = current.maxX() + 1.0F;
         float south = current.maxZ() + 1.0F;
         float y = current.surfaceY() + LIFT;
-        switch (guide) {
-            case THIRDS -> lattice(buffer, pose, west, north, east, south, y, 1.0F / 3.0F, 2.0F / 3.0F);
-            case GOLDEN -> lattice(buffer, pose, west, north, east, south, y, 0.382F, 0.618F);
-            case QUARTERS -> lattice(buffer, pose, west, north, east, south, y, 0.25F, 0.5F, 0.75F);
-            case CENTRE -> lattice(buffer, pose, west, north, east, south, y, 0.5F);
-            case GRID -> lattice(buffer, pose, west, north, east, south, y,
-                    0.125F, 0.25F, 0.375F, 0.5F, 0.625F, 0.75F, 0.875F);
-            case DIAGONALS -> {
-                line(buffer, pose, west, y, north, east, y, south);
-                line(buffer, pose, east, y, north, west, y, south);
-            }
-            case OFF, SPIRAL -> {
-            }
+        float[] fractions = fractions(guide);
+        lattice(buffer, pose, west, north, east, south, y, fractions);
+        if (guide == PinGuide.Guide.DIAGONALS) {
+            line(buffer, pose, west, y, north, east, y, south, LINE_COLOUR);
+            line(buffer, pose, east, y, north, west, y, south, LINE_COLOUR);
         }
         // Outline, so the plot's own edges are as readable as the divisions.
-        line(buffer, pose, west, y, north, east, y, north);
-        line(buffer, pose, west, y, south, east, y, south);
-        line(buffer, pose, west, y, north, west, y, south);
-        line(buffer, pose, east, y, north, east, y, south);
+        outline(buffer, pose, west, north, east, south, y, LINE_COLOUR);
+        if (PinSpoConfig.get().plotVertical) {
+            walls(buffer, pose, west, north, east, south, y, verticalHeight(current), fractions);
+        }
+    }
+
+    /** Where a guide puts its division lines along each side, as fractions of the side's length. */
+    private static float[] fractions(PinGuide.Guide guide) {
+        return switch (guide) {
+            case THIRDS -> new float[]{1.0F / 3.0F, 2.0F / 3.0F};
+            case GOLDEN -> new float[]{0.382F, 0.618F};
+            case QUARTERS -> new float[]{0.25F, 0.5F, 0.75F};
+            case CENTRE -> new float[]{0.5F};
+            case GRID -> new float[]{0.125F, 0.25F, 0.375F, 0.5F, 0.625F, 0.75F, 0.875F};
+            case OFF, SPIRAL, DIAGONALS -> new float[0];
+        };
     }
 
     private static void lattice(VertexConsumer buffer, PoseStack.Pose pose, float west, float north,
@@ -234,13 +282,48 @@ public final class PlotGrid {
         for (float fraction : fractions) {
             float x = west + (east - west) * fraction;
             float z = north + (south - north) * fraction;
-            line(buffer, pose, x, y, north, x, y, south);
-            line(buffer, pose, west, y, z, east, y, z);
+            line(buffer, pose, x, y, north, x, y, south, LINE_COLOUR);
+            line(buffer, pose, west, y, z, east, y, z, LINE_COLOUR);
         }
     }
 
-    private static void line(VertexConsumer buffer, PoseStack.Pose pose,
-                             float fromX, float fromY, float fromZ, float toX, float toY, float toZ) {
+    /**
+     * The same divisions carried upwards: a column at every division point of the plot's edges, plus a ring
+     * at every division of the height, so proportions can be judged off the ground as well as on it.
+     */
+    private static void walls(VertexConsumer buffer, PoseStack.Pose pose, float west, float north,
+                              float east, float south, float y, int height, float[] fractions) {
+        float top = y + height;
+        for (float corner : new float[]{0.0F, 1.0F}) {
+            float x = west + (east - west) * corner;
+            float z = north + (south - north) * corner;
+            line(buffer, pose, x, y, north, x, top, north, VERTICAL_COLOUR);
+            line(buffer, pose, x, y, south, x, top, south, VERTICAL_COLOUR);
+            line(buffer, pose, west, y, z, west, top, z, VERTICAL_COLOUR);
+            line(buffer, pose, east, y, z, east, top, z, VERTICAL_COLOUR);
+        }
+        for (float fraction : fractions) {
+            float x = west + (east - west) * fraction;
+            float z = north + (south - north) * fraction;
+            line(buffer, pose, x, y, north, x, top, north, VERTICAL_COLOUR);
+            line(buffer, pose, x, y, south, x, top, south, VERTICAL_COLOUR);
+            line(buffer, pose, west, y, z, west, top, z, VERTICAL_COLOUR);
+            line(buffer, pose, east, y, z, east, top, z, VERTICAL_COLOUR);
+            outline(buffer, pose, west, north, east, south, y + height * fraction, VERTICAL_COLOUR);
+        }
+        outline(buffer, pose, west, north, east, south, top, VERTICAL_COLOUR);
+    }
+
+    private static void outline(VertexConsumer buffer, PoseStack.Pose pose, float west, float north,
+                                float east, float south, float y, int colour) {
+        line(buffer, pose, west, y, north, east, y, north, colour);
+        line(buffer, pose, west, y, south, east, y, south, colour);
+        line(buffer, pose, west, y, north, west, y, south, colour);
+        line(buffer, pose, east, y, north, east, y, south, colour);
+    }
+
+    private static void line(VertexConsumer buffer, PoseStack.Pose pose, float fromX, float fromY, float fromZ,
+                             float toX, float toY, float toZ, int colour) {
         float deltaX = toX - fromX;
         float deltaY = toY - fromY;
         float deltaZ = toZ - fromZ;
@@ -249,11 +332,11 @@ public final class PlotGrid {
         float normalY = deltaY / length;
         float normalZ = deltaZ / length;
         buffer.addVertex(pose, fromX, fromY, fromZ)
-                .setColor(LINE_COLOUR)
+                .setColor(colour)
                 .setNormal(pose, normalX, normalY, normalZ)
                 .setLineWidth(LINE_WIDTH);
         buffer.addVertex(pose, toX, toY, toZ)
-                .setColor(LINE_COLOUR)
+                .setColor(colour)
                 .setNormal(pose, normalX, normalY, normalZ)
                 .setLineWidth(LINE_WIDTH);
     }

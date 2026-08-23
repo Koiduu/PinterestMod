@@ -141,6 +141,27 @@ public class PinSettingsScreen extends PinTabScreen {
                         }));
         y += WIDGET_HEIGHT + SPACING;
         addRenderableWidget(CycleButton
+                .onOffBuilder(config.plotVertical)
+                .create(rightX, y, columnWidth, WIDGET_HEIGHT,
+                        Component.translatable("option.pinspo.plot_vertical"),
+                        (button, value) -> {
+                            config.plotVertical = value;
+                            config.save();
+                            if (value) {
+                                PlotGrid.setHidden(false);
+                                if (!PlotGrid.hasPlot()) {
+                                    PlotGrid.scan();
+                                }
+                            }
+                        }));
+        y += WIDGET_HEIGHT + SPACING;
+        addRenderableWidget(PinButton.of(rightX, y, columnWidth, WIDGET_HEIGHT,
+                heightLabel(), () -> {
+                    PlotGrid.cycleVerticalHeight();
+                    rebuild();
+                }));
+        y += WIDGET_HEIGHT + SPACING;
+        addRenderableWidget(CycleButton
                 .onOffBuilder(config.blurBackdrop)
                 .create(rightX, y, columnWidth, WIDGET_HEIGHT,
                         Component.translatable("option.pinspo.blur_backdrop"),
@@ -148,6 +169,15 @@ public class PinSettingsScreen extends PinTabScreen {
                             config.blurBackdrop = value;
                             config.save();
                         }));
+    }
+
+    /** "Auto" for a height that follows the plot's own size, otherwise the block count. */
+    private Component heightLabel() {
+        Component value = config.plotVerticalHeight == 0
+                ? Component.translatable("option.pinspo.plot_height.auto")
+                : Component.literal(config.plotVerticalHeight + " "
+                        + Component.translatable("option.pinspo.blocks").getString());
+        return Component.translatable("option.pinspo.plot_height", value);
     }
 
     private void rebuild() {

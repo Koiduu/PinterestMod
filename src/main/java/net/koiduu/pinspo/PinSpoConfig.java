@@ -17,6 +17,9 @@ public class PinSpoConfig {
         TOP_LEFT, TOP_RIGHT, BOTTOM_LEFT, BOTTOM_RIGHT
     }
 
+    /** Build heights are limited well below this; the cap only keeps the guide from filling the sky. */
+    public static final int MAX_VERTICAL_HEIGHT = 64;
+
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final Path PATH = FabricLoader.getInstance().getConfigDir().resolve("pinspo.json");
 
@@ -41,6 +44,10 @@ public class PinSpoConfig {
     public PinGuide.Guide guide = PinGuide.Guide.OFF;
     /** Composition guide drawn on the build plot's floor; cycled with the plot-guide keybind. */
     public PinGuide.Guide floorGuide = PinGuide.Guide.OFF;
+    /** Raise the plot guide's divisions up the plot's walls as well as across its floor. */
+    public boolean plotVertical = false;
+    /** Height of the vertical plot guide in blocks; 0 follows the plot's own width. */
+    public int plotVerticalHeight = 0;
     /** Blurred halo behind the overlay, so the reference reads against busy terrain. */
     public boolean blurBackdrop = false;
     /** Watch chat for Hypixel Build Battle themes and react to them automatically. */
@@ -97,6 +104,7 @@ public class PinSpoConfig {
             // A spiral cannot be laid out on a plot, so it is not one of the floor guides.
             floorGuide = PinGuide.Guide.OFF;
         }
+        plotVerticalHeight = Math.clamp(plotVerticalHeight, 0, MAX_VERTICAL_HEIGHT);
         offsetX = clamp01(offsetX);
         offsetY = clamp01(offsetY);
         scale = Math.clamp(scale, 0.05F, 1.0F);
