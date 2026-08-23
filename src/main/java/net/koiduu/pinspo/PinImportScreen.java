@@ -13,6 +13,7 @@ import org.lwjgl.glfw.GLFW;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.util.tinyfd.TinyFileDialogs;
 
+import java.net.URI;
 import java.nio.file.Path;
 
 /**
@@ -113,7 +114,18 @@ public class PinImportScreen extends PinTabScreen {
             return null;
         }
         return new PinterestApi.Pin(url,
-                Component.translatable("screen.pinspo.pasted_image").getString(), url, url, 0, 0);
+                Component.translatable("screen.pinspo.pasted_image").getString(), url, url, 0, 0,
+                hostOf(url));
+    }
+
+    /** The site a pasted link came from, used as the attribution shown under the image. */
+    @Nullable
+    private static String hostOf(String url) {
+        try {
+            return URI.create(url).getHost();
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
     }
 
     private static boolean isPinPage(String url) {

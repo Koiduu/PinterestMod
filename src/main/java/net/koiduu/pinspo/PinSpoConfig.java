@@ -33,6 +33,10 @@ public class PinSpoConfig {
     public boolean preferOriginalResolution = false;
     /** Currently pinned image URL; re-pinned from the on-disk cache on startup. */
     public String pinnedUrl = "";
+    /** Who the pinned image belongs to, shown under the overlay. */
+    public String pinnedCredit = "";
+    /** Draw the image owner's name under the overlay and under grid thumbnails. */
+    public boolean showCredit = true;
     /** Watch chat for Hypixel Build Battle themes and react to them automatically. */
     public boolean buildBattleMode = false;
     /** In Build Battle mode, pin a random matching image instead of opening the search screen. */
@@ -79,6 +83,7 @@ public class PinSpoConfig {
         if (pinnedUrl == null) {
             pinnedUrl = "";
         }
+        pinnedCredit = PinSecurity.cleanName(pinnedCredit);
         offsetX = clamp01(offsetX);
         offsetY = clamp01(offsetY);
         scale = Math.clamp(scale, 0.05F, 1.0F);

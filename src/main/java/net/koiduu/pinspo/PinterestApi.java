@@ -48,8 +48,19 @@ public final class PinterestApi {
     /**
      * @param thumbnailUrl small image used in the grid
      * @param imageUrl     full-resolution image used for the pinned overlay
+     * @param credit       who the image belongs to, shown under the thumbnail; null when unknown
      */
-    public record Pin(String id, String title, String thumbnailUrl, String imageUrl, int width, int height) {
+    public record Pin(String id, String title, String thumbnailUrl, String imageUrl, int width, int height,
+                      @Nullable String credit) {
+
+        public Pin {
+            String trimmed = credit == null ? "" : PinSecurity.cleanName(credit);
+            credit = trimmed.isBlank() ? null : trimmed;
+        }
+
+        public Pin(String id, String title, String thumbnailUrl, String imageUrl, int width, int height) {
+            this(id, title, thumbnailUrl, imageUrl, width, height, null);
+        }
     }
 
     public static CompletableFuture<Page> search(String query, @Nullable String bookmark) {
@@ -149,7 +160,29 @@ public final class PinterestApi {
                 thumbnail.get("url").getAsString(),
                 full.get("url").getAsString(),
                 thumbnail.get("width").getAsInt(),
-                thumbnail.get("height").getAsInt());
+                thumbnail.get("height").getAsInt(),
+                credit(object));
+    }
+
+    /** The site the pin came from, falling back to the Pinterest account that posted it. */
+    @Nullable
+    private static String credit(JsonObject object) {
+        String domain = string(object, "domain");
+        if (!domain.isEmpty() && !domain.equalsIgnoreCase("Uploaded by user")) {
+            return domain;
+        }
+        JsonElement pinner = object.get("pinner");
+        if (pinner != null && pinner.isJsonObject()) {
+            JsonObject account = pinner.getAsJsonObject();
+            String name = string(account, "username");
+            if (name.isEmpty()) {
+                name = string(account, "full_name");
+            }
+            if (!name.isEmpty()) {
+                return name;
+            }
+        }
+        return null;
     }
 
     @Nullable
