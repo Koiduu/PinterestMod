@@ -49,11 +49,20 @@ public class PinSpoClient implements ClientModInitializer {
             CATEGORY
     );
 
+    /** Toggles the plot guide's vertical lattice; sneaking steps its height instead. */
+    public static final KeyMapping VERTICAL_KEY = new KeyMapping(
+            "key.pinspo.vertical",
+            InputConstants.Type.KEYSYM,
+            GLFW.GLFW_KEY_J,
+            CATEGORY
+    );
+
     @Override
     public void onInitializeClient() {
         KeyBindingHelper.registerKeyBinding(OPEN_KEY);
         KeyBindingHelper.registerKeyBinding(GUIDE_KEY);
         KeyBindingHelper.registerKeyBinding(PLOT_KEY);
+        KeyBindingHelper.registerKeyBinding(VERTICAL_KEY);
 
         WorldRenderEvents.BEFORE_TRANSLUCENT.register(PlotGrid::render);
 
@@ -124,6 +133,22 @@ public class PinSpoClient implements ClientModInitializer {
                 } else {
                     message = Component.translatable("message.pinspo.plot_guide", guide.label());
                 }
+                client.player.displayClientMessage(message, true);
+            }
+        }
+        while (VERTICAL_KEY.consumeClick()) {
+            // Sneaking steps the wall height rather than switching the lattice off and on again.
+            boolean resize = client.player != null && client.player.isShiftKeyDown();
+            Component message;
+            if (resize) {
+                message = Component.translatable(
+                        "message.pinspo.plot_height", PlotGrid.cycleVerticalHeight());
+            } else {
+                message = Component.translatable(PlotGrid.toggleVertical()
+                        ? "message.pinspo.plot_vertical_on"
+                        : "message.pinspo.plot_vertical_off");
+            }
+            if (client.player != null) {
                 client.player.displayClientMessage(message, true);
             }
         }
