@@ -9,6 +9,7 @@ import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.VanillaHudElements;
+import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
@@ -32,9 +33,29 @@ public class PinSpoClient implements ClientModInitializer {
             CATEGORY
     );
 
+    /** Cycles the composition guide drawn over the reference. */
+    public static final KeyMapping GUIDE_KEY = new KeyMapping(
+            "key.pinspo.guide",
+            InputConstants.Type.KEYSYM,
+            GLFW.GLFW_KEY_G,
+            CATEGORY
+    );
+
+    /** Cycles the composition guide drawn on the build plot's floor. */
+    public static final KeyMapping PLOT_KEY = new KeyMapping(
+            "key.pinspo.plot",
+            InputConstants.Type.KEYSYM,
+            GLFW.GLFW_KEY_H,
+            CATEGORY
+    );
+
     @Override
     public void onInitializeClient() {
         KeyMappingHelper.registerKeyMapping(OPEN_KEY);
+        KeyMappingHelper.registerKeyMapping(GUIDE_KEY);
+        KeyMappingHelper.registerKeyMapping(PLOT_KEY);
+
+        LevelRenderEvents.AFTER_TRANSLUCENT_TERRAIN.register(PlotGrid::render);
 
         HudElementRegistry.attachElementAfter(
                 VanillaHudElements.MISC_OVERLAYS,
@@ -63,7 +84,10 @@ public class PinSpoClient implements ClientModInitializer {
             return handle(message);
         });
 
-        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> BuildBattleMode.reset());
+        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
+            BuildBattleMode.reset();
+            PlotGrid.reset();
+        });
         ClientLifecycleEvents.CLIENT_STOPPING.register(client -> PinnedImage.clear());
     }
 
@@ -74,6 +98,22 @@ public class PinSpoClient implements ClientModInitializer {
     }
 
     private static void onEndTick(Minecraft client) {
+        while (GUIDE_KEY.consumeClick()) {
+            PinGuide.Guide guide = PinnedImage.cycleGuide();
+            if (client.player != null) {
+                client.player.sendOverlayMessage(
+                        Component.translatable("message.pinspo.guide", guide.label()));
+            }
+        }
+        while (PLOT_KEY.consumeClick()) {
+            PinGuide.Guide guide = PlotGrid.cycle();
+            if (client.player != null) {
+                Component message = guide != PinGuide.Guide.OFF && !PlotGrid.hasPlot()
+                        ? Component.translatable("message.pinspo.no_plot")
+                        : Component.translatable("message.pinspo.plot_guide", guide.label());
+                client.player.sendOverlayMessage(message);
+            }
+        }
         while (OPEN_KEY.consumeClick()) {
             if (client.gui.screen() != null) {
                 continue;

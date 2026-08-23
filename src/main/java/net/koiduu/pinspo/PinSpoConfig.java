@@ -37,6 +37,12 @@ public class PinSpoConfig {
     public String pinnedCredit = "";
     /** Draw the image owner's name under the overlay and under grid thumbnails. */
     public boolean showCredit = true;
+    /** Composition guide drawn over the overlay; cycled with the guide keybind. */
+    public PinGuide.Guide guide = PinGuide.Guide.OFF;
+    /** Composition guide drawn on the build plot's floor; cycled with the plot-guide keybind. */
+    public PinGuide.Guide floorGuide = PinGuide.Guide.OFF;
+    /** Blurred halo behind the overlay, so the reference reads against busy terrain. */
+    public boolean blurBackdrop = false;
     /** Watch chat for Hypixel Build Battle themes and react to them automatically. */
     public boolean buildBattleMode = false;
     /** In Build Battle mode, pin a random matching image instead of opening the search screen. */
@@ -84,6 +90,13 @@ public class PinSpoConfig {
             pinnedUrl = "";
         }
         pinnedCredit = PinSecurity.cleanName(pinnedCredit);
+        if (guide == null) {
+            guide = PinGuide.Guide.OFF;
+        }
+        if (floorGuide == null || floorGuide == PinGuide.Guide.SPIRAL) {
+            // A spiral cannot be laid out on a plot, so it is not one of the floor guides.
+            floorGuide = PinGuide.Guide.OFF;
+        }
         offsetX = clamp01(offsetX);
         offsetY = clamp01(offsetY);
         scale = Math.clamp(scale, 0.05F, 1.0F);

@@ -34,6 +34,11 @@ public final class PinnedImage {
 
     private static final Identifier TEXTURE_ID =
             Identifier.fromNamespaceAndPath(PinSpoClient.MOD_ID, "pinned");
+    private static final Identifier BLUR_ID =
+            Identifier.fromNamespaceAndPath(PinSpoClient.MOD_ID, "pinned_blur");
+    /** The blurred copy is tiny on purpose: it is only ever drawn as a soft halo behind the image. */
+    private static final int BLUR_SIZE = 48;
+    private static final int BLUR_PASSES = 2;
     private static final Pattern SIZE_FOLDER = Pattern.compile("/\\d+x\\d*/");
     private static final Pattern PINIMG_URL = Pattern.compile("https://i\\.pinimg\\.com/[^\"'\\s\\\\]+\\.(?:jpg|jpeg|png|webp|gif)");
     private static final Path CACHE_DIR = FabricLoader.getInstance().getConfigDir().resolve("pinspo/images");
@@ -47,6 +52,8 @@ public final class PinnedImage {
     private static HttpClient httpClient;
     @Nullable
     private static DynamicTexture texture;
+    @Nullable
+    private static DynamicTexture blurTexture;
     private static int imageWidth;
     private static int imageHeight;
     private static boolean downloading;
@@ -300,6 +307,11 @@ public final class PinnedImage {
 
     private static void upload(NativeImage image) {
         clear();
+        NativeImage blurred = blur(image);
+        if (blurred != null) {
+            blurTexture = new DynamicTexture(() -> "PinSpo pinned image blur", blurred);
+            Minecraft.getInstance().getTextureManager().register(BLUR_ID, blurTexture);
+        }
         texture = new DynamicTexture(() -> "PinSpo pinned image", image);
         imageWidth = image.getWidth();
         imageHeight = image.getHeight();
@@ -319,6 +331,68 @@ public final class PinnedImage {
             Minecraft.getInstance().getTextureManager().release(TEXTURE_ID);
             texture.close();
             texture = null;
+        }
+        if (blurTexture != null) {
+            Minecraft.getInstance().getTextureManager().release(BLUR_ID);
+            blurTexture.close();
+            blurTexture = null;
+        }
+    }
+
+    /**
+     * A small, box-blurred copy of the reference, drawn enlarged behind it so the overlay has a soft
+     * frosted edge instead of a hard rectangle against the terrain.
+     */
+    @Nullable
+    private static NativeImage blur(NativeImage image) {
+        int width = image.getWidth();
+        int height = image.getHeight();
+        if (width < 2 || height < 2) {
+            return null;
+        }
+        float factor = Math.min((float) BLUR_SIZE / width, (float) BLUR_SIZE / height);
+        NativeImage small = new NativeImage(
+                Math.max(2, Math.round(width * factor)),
+                Math.max(2, Math.round(height * factor)),
+                false);
+        image.resizeSubRectTo(0, 0, width, height, small);
+        for (int pass = 0; pass < BLUR_PASSES; pass++) {
+            boxBlur(small);
+        }
+        return small;
+    }
+
+    /** One 3x3 box blur pass, averaging each packed channel separately so the byte order is irrelevant. */
+    private static void boxBlur(NativeImage image) {
+        int width = image.getWidth();
+        int height = image.getHeight();
+        int[] source = new int[width * height];
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                source[y * width + x] = image.getPixel(x, y);
+            }
+        }
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                int[] sums = new int[4];
+                int samples = 0;
+                for (int dy = -1; dy <= 1; dy++) {
+                    for (int dx = -1; dx <= 1; dx++) {
+                        int sampleX = Math.clamp(x + dx, 0, width - 1);
+                        int sampleY = Math.clamp(y + dy, 0, height - 1);
+                        int pixel = source[sampleY * width + sampleX];
+                        for (int channel = 0; channel < 4; channel++) {
+                            sums[channel] += pixel >>> (channel * 8) & 0xFF;
+                        }
+                        samples++;
+                    }
+                }
+                int blurred = 0;
+                for (int channel = 0; channel < 4; channel++) {
+                    blurred |= sums[channel] / samples << (channel * 8);
+                }
+                image.setPixel(x, y, blurred);
+            }
         }
     }
 
@@ -350,6 +424,7 @@ public final class PinnedImage {
 
         int alpha = Math.clamp(Math.round(config.opacity * 255.0F), 0, 255);
         renderCredit(guiGraphics, config, x, y + height, width, alpha);
+        renderBackdrop(guiGraphics, config, x, y, width, height, alpha);
         guiGraphics.blit(
                 RenderPipelines.GUI_TEXTURED,
                 TEXTURE_ID,
@@ -363,6 +438,39 @@ public final class PinnedImage {
                 height,
                 alpha << 24 | 0xFFFFFF
         );
+        PinGuide.render(guiGraphics, config.guide, x, y, width, height, alpha);
+    }
+
+    /** Blurred copy of the reference, drawn oversized behind it. */
+    private static void renderBackdrop(GuiGraphicsExtractor guiGraphics, PinSpoConfig config,
+                                      int x, int y, int width, int height, int alpha) {
+        if (!config.blurBackdrop || blurTexture == null) {
+            return;
+        }
+        int margin = Math.max(4, Math.min(width, height) / 10);
+        int blurWidth = width + margin * 2;
+        int blurHeight = height + margin * 2;
+        guiGraphics.blit(
+                RenderPipelines.GUI_TEXTURED,
+                BLUR_ID,
+                x - margin,
+                y - margin,
+                0.0F,
+                0.0F,
+                blurWidth,
+                blurHeight,
+                blurWidth,
+                blurHeight,
+                alpha * 3 / 4 << 24 | 0xFFFFFF
+        );
+    }
+
+    /** Steps to the next composition guide and returns the one now in use. */
+    public static PinGuide.Guide cycleGuide() {
+        PinSpoConfig config = PinSpoConfig.get();
+        config.guide = config.guide.next();
+        config.save();
+        return config.guide;
     }
 
     /** Half-scale attribution tucked under the overlay, fading with the overlay's own opacity. */
