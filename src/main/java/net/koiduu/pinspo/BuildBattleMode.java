@@ -54,11 +54,10 @@ public final class BuildBattleMode {
         }
         currentTheme = theme;
         PinnedImage.setHidden(false);
-        // A new round means a new plot, so the floor guide is measured again where the player now stands.
+        // A new round means a new plot, so the old bounds are dropped and the next tick that finds the
+        // player standing on a floor measures the new one.
         PlotGrid.setHidden(false);
-        if (PinSpoConfig.get().floorGuide != PinGuide.Guide.OFF) {
-            PlotGrid.scan();
-        }
+        PlotGrid.reset();
         onThemeChosen(theme);
     }
 
