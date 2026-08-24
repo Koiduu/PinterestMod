@@ -2,14 +2,21 @@ package net.koiduu.pinspo;
 
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractSliderButton;
+import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.CycleButton;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.DoubleConsumer;
 
-/** Settings tab: overlay appearance on the left, Build Battle options on the right. */
+/**
+ * Settings tab: overlay appearance on the left, Build Battle options on the right. Both columns scroll
+ * together, so no option can end up below the window however small it is.
+ */
 public class PinSettingsScreen extends PinTabScreen {
 
     private static final int WIDGET_HEIGHT = 20;
@@ -25,6 +32,15 @@ public class PinSettingsScreen extends PinTabScreen {
     /** Forgetting the taste profile cannot be undone, so the button asks once before it does it. */
     private boolean confirmForget;
 
+    /** Every option widget, with the y it would sit at unscrolled, so scrolling can just move them. */
+    private final List<AbstractWidget> options = new ArrayList<>();
+    private final List<Integer> unscrolledY = new ArrayList<>();
+    private int scroll;
+    private int maxScroll;
+    private int contentTop;
+    private int contentBottom;
+    private boolean draggingBar;
+
     public PinSettingsScreen(@Nullable Screen parent) {
         super(Component.translatable("screen.pinspo.settings"), parent);
     }
@@ -37,6 +53,8 @@ public class PinSettingsScreen extends PinTabScreen {
     @Override
     protected void init() {
         addTabs();
+        options.clear();
+        unscrolledY.clear();
 
         // Both panels have to fit the viewport, so the column width follows the window rather than a cap.
         columnWidth = Math.max(90, Math.min(210, (width - MARGIN * 2 - 48) / 2));
@@ -45,19 +63,19 @@ public class PinSettingsScreen extends PinTabScreen {
         columnTop = CONTENT_TOP + 6;
 
         int y = columnTop + HEADER_HEIGHT;
-        addRenderableWidget(percentSlider(leftX, y, "option.pinspo.opacity", config.opacity,
+        addOption(percentSlider(leftX, y, "option.pinspo.opacity", config.opacity,
                 value -> config.opacity = (float) value));
         y += WIDGET_HEIGHT + SPACING;
-        addRenderableWidget(percentSlider(leftX, y, "option.pinspo.scale", config.scale,
+        addOption(percentSlider(leftX, y, "option.pinspo.scale", config.scale,
                 value -> config.scale = (float) value));
         y += WIDGET_HEIGHT + SPACING;
-        addRenderableWidget(percentSlider(leftX, y, "option.pinspo.offset_x", config.offsetX,
+        addOption(percentSlider(leftX, y, "option.pinspo.offset_x", config.offsetX,
                 value -> config.offsetX = (float) value));
         y += WIDGET_HEIGHT + SPACING;
-        addRenderableWidget(percentSlider(leftX, y, "option.pinspo.offset_y", config.offsetY,
+        addOption(percentSlider(leftX, y, "option.pinspo.offset_y", config.offsetY,
                 value -> config.offsetY = (float) value));
         y += WIDGET_HEIGHT + SPACING;
-        addRenderableWidget(CycleButton
+        addOption(CycleButton
                 .builder((PinSpoConfig.Corner corner) ->
                                 Component.translatable("option.pinspo.corner." + corner.name().toLowerCase()),
                         config.corner)
@@ -69,7 +87,7 @@ public class PinSettingsScreen extends PinTabScreen {
                             config.save();
                         }));
         y += WIDGET_HEIGHT + SPACING;
-        addRenderableWidget(CycleButton
+        addOption(CycleButton
                 .onOffBuilder(config.preferOriginalResolution)
                 .create(leftX, y, columnWidth, WIDGET_HEIGHT,
                         Component.translatable("option.pinspo.prefer_original"),
@@ -84,9 +102,9 @@ public class PinSettingsScreen extends PinTabScreen {
                     rebuild();
                 });
         removePin.active = PinnedImage.isPinned();
-        addRenderableWidget(removePin);
+        addOption(removePin);
         y += WIDGET_HEIGHT + SPACING;
-        addRenderableWidget(CycleButton
+        addOption(CycleButton
                 .onOffBuilder(config.personalise)
                 .create(leftX, y, columnWidth, WIDGET_HEIGHT,
                         Component.translatable("option.pinspo.personalise"),
@@ -106,10 +124,10 @@ public class PinSettingsScreen extends PinTabScreen {
                     rebuild();
                 });
         forget.active = confirmForget || PinTaste.hasProfile();
-        addRenderableWidget(forget);
+        addOption(forget);
 
         y = columnTop + HEADER_HEIGHT;
-        addRenderableWidget(CycleButton
+        addOption(CycleButton
                 .onOffBuilder(config.buildBattleMode)
                 .create(rightX, y, columnWidth, WIDGET_HEIGHT,
                         Component.translatable("option.pinspo.build_battle"),
@@ -118,7 +136,7 @@ public class PinSettingsScreen extends PinTabScreen {
                             config.save();
                         }));
         y += WIDGET_HEIGHT + SPACING;
-        addRenderableWidget(CycleButton
+        addOption(CycleButton
                 .onOffBuilder(config.buildBattleRandomPin)
                 .create(rightX, y, columnWidth, WIDGET_HEIGHT,
                         Component.translatable("option.pinspo.build_battle_random"),
@@ -127,7 +145,7 @@ public class PinSettingsScreen extends PinTabScreen {
                             config.save();
                         }));
         y += WIDGET_HEIGHT + SPACING;
-        addRenderableWidget(CycleButton
+        addOption(CycleButton
                 .onOffBuilder(config.showCredit)
                 .create(rightX, y, columnWidth, WIDGET_HEIGHT,
                         Component.translatable("option.pinspo.show_credit"),
@@ -136,7 +154,7 @@ public class PinSettingsScreen extends PinTabScreen {
                             config.save();
                         }));
         y += WIDGET_HEIGHT + SPACING;
-        addRenderableWidget(CycleButton
+        addOption(CycleButton
                 .builder(PinGuide.Guide::label, config.guide)
                 .withValues(PinGuide.Guide.values())
                 .create(rightX, y, columnWidth, WIDGET_HEIGHT,
@@ -146,7 +164,7 @@ public class PinSettingsScreen extends PinTabScreen {
                             config.save();
                         }));
         y += WIDGET_HEIGHT + SPACING;
-        addRenderableWidget(CycleButton
+        addOption(CycleButton
                 .builder(PinGuide.Guide::label, config.floorGuide)
                 .withValues(PinGuide.Guide.OFF, PinGuide.Guide.THIRDS, PinGuide.Guide.GOLDEN,
                         PinGuide.Guide.DIAGONALS, PinGuide.Guide.CENTRE, PinGuide.Guide.QUARTERS,
@@ -164,7 +182,7 @@ public class PinSettingsScreen extends PinTabScreen {
                             }
                         }));
         y += WIDGET_HEIGHT + SPACING;
-        addRenderableWidget(CycleButton
+        addOption(CycleButton
                 .onOffBuilder(config.plotVertical)
                 .create(rightX, y, columnWidth, WIDGET_HEIGHT,
                         Component.translatable("option.pinspo.plot_vertical"),
@@ -179,13 +197,13 @@ public class PinSettingsScreen extends PinTabScreen {
                             }
                         }));
         y += WIDGET_HEIGHT + SPACING;
-        addRenderableWidget(PinButton.of(rightX, y, columnWidth, WIDGET_HEIGHT,
+        addOption(PinButton.of(rightX, y, columnWidth, WIDGET_HEIGHT,
                 heightLabel(), () -> {
                     PlotGrid.cycleVerticalHeight();
                     rebuild();
                 }));
         y += WIDGET_HEIGHT + SPACING;
-        addRenderableWidget(CycleButton
+        addOption(CycleButton
                 .onOffBuilder(config.blurBackdrop)
                 .create(rightX, y, columnWidth, WIDGET_HEIGHT,
                         Component.translatable("option.pinspo.blur_backdrop"),
@@ -193,6 +211,91 @@ public class PinSettingsScreen extends PinTabScreen {
                             config.blurBackdrop = value;
                             config.save();
                         }));
+
+        contentTop = columnTop + HEADER_HEIGHT;
+        contentBottom = height - FOOTER_HEIGHT - 12;
+        int tallest = 0;
+        for (int optionY : unscrolledY) {
+            tallest = Math.max(tallest, optionY + WIDGET_HEIGHT);
+        }
+        maxScroll = Math.max(0, tallest - contentBottom);
+        applyScroll(scroll);
+    }
+
+    /** Adds an option to the scrolling columns, remembering where it sits when nothing is scrolled. */
+    private <T extends AbstractWidget> T addOption(T option) {
+        options.add(option);
+        unscrolledY.add(option.getY());
+        return addRenderableWidget(option);
+    }
+
+    /**
+     * Moves the options by {@code target}, hiding any that would fall outside the panels — hidden widgets
+     * cannot be clicked either, so a half-scrolled option can never be hit through the footer.
+     */
+    private void applyScroll(int target) {
+        scroll = Math.clamp(target, 0, maxScroll);
+        for (int i = 0; i < options.size(); i++) {
+            AbstractWidget option = options.get(i);
+            int y = unscrolledY.get(i) - scroll;
+            option.setY(y);
+            option.visible = y >= contentTop && y + option.getHeight() <= contentBottom;
+        }
+    }
+
+    @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
+        if (maxScroll > 0) {
+            applyScroll(scroll - (int) Math.round(verticalAmount * (WIDGET_HEIGHT + SPACING)));
+            return true;
+        }
+        return super.mouseScrolled(mouseX, mouseY, horizontalAmount, verticalAmount);
+    }
+
+    @Override
+    public boolean mouseClicked(MouseButtonEvent event, boolean doubled) {
+        if (maxScroll > 0 && event.x() >= width - MARGIN + 2 && event.x() <= width - 2
+                && event.y() >= contentTop && event.y() <= contentBottom) {
+            draggingBar = true;
+            scrollToBar(event.y());
+            return true;
+        }
+        return super.mouseClicked(event, doubled);
+    }
+
+    @Override
+    public boolean mouseDragged(MouseButtonEvent event, double dragX, double dragY) {
+        if (draggingBar) {
+            scrollToBar(event.y());
+            return true;
+        }
+        return super.mouseDragged(event, dragX, dragY);
+    }
+
+    @Override
+    public boolean mouseReleased(MouseButtonEvent event) {
+        draggingBar = false;
+        return super.mouseReleased(event);
+    }
+
+    /** Puts the grabbed point of the bar under the cursor. */
+    private void scrollToBar(double mouseY) {
+        int track = contentBottom - contentTop;
+        double fraction = (mouseY - contentTop) / Math.max(1, track);
+        applyScroll((int) Math.round(fraction * maxScroll));
+    }
+
+    /** The bar beside the panels: how far down the options the view is, and a handle to drag. */
+    private void renderScrollbar(GuiGraphics guiGraphics) {
+        if (maxScroll <= 0) {
+            return;
+        }
+        int track = contentBottom - contentTop;
+        int handle = Math.max(16, track * track / (track + maxScroll));
+        int top = contentTop + (track - handle) * scroll / maxScroll;
+        int x = width - MARGIN + 2;
+        PinTheme.roundedRect(guiGraphics, x, contentTop, 4, track, PinTheme.CARD);
+        PinTheme.roundedRect(guiGraphics, x, top, 4, handle, PinTheme.ACCENT);
     }
 
     /** "Auto" for a height that follows the plot's own size, otherwise the block count. */
@@ -220,6 +323,7 @@ public class PinSettingsScreen extends PinTabScreen {
                 Component.translatable("screen.pinspo.section.overlay"), leftX, columnTop);
         PinTheme.sectionHeader(guiGraphics, font,
                 Component.translatable("screen.pinspo.section.build_battle"), rightX, columnTop);
+        renderScrollbar(guiGraphics);
     }
 
     private AbstractSliderButton percentSlider(int x, int y, String translationKey, float initialValue, DoubleConsumer setter) {
