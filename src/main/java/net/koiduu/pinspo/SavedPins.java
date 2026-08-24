@@ -76,6 +76,15 @@ public final class SavedPins {
         }
     }
 
+    /**
+     * Adds a pin the player chose to keep, which also says something about their taste — unlike
+     * {@link #add}, which a whole folder imported from a friend goes through as well.
+     */
+    public static void keep(String folder, PinterestApi.Pin pin) {
+        add(folder, pin);
+        PinTaste.record(pin);
+    }
+
     public static void remove(String folder, PinterestApi.Pin pin) {
         List<PinterestApi.Pin> pins = all().get(PinSecurity.cleanName(folder));
         if (pins != null && pins.removeIf(existing -> existing.imageUrl().equals(pin.imageUrl()))) {

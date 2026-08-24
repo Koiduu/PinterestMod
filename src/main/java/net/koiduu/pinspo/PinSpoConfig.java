@@ -50,6 +50,8 @@ public class PinSpoConfig {
     public int plotVerticalHeight = 0;
     /** Blurred halo behind the overlay, so the reference reads against busy terrain. */
     public boolean blurBackdrop = false;
+    /** Order search results by what the player has picked and saved before. */
+    public boolean personalise = true;
     /** Watch chat for Hypixel Build Battle themes and react to them automatically. */
     public boolean buildBattleMode = false;
     /** In Build Battle mode, pin a random matching image instead of opening the search screen. */
