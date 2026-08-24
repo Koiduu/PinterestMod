@@ -2,11 +2,10 @@ package net.koiduu.pinspo;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
-import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
+import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderContext;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.player.LocalPlayer;
-import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.block.Block;
@@ -232,20 +231,22 @@ public final class PlotGrid {
     }
 
     /** Draws the floor guide; called every frame while a world is being rendered. */
-    public static void render(WorldRenderContext context) {
+    public static void render(LevelRenderContext context) {
         PinGuide.Guide guide = PinSpoConfig.get().floorGuide;
         Plot current = plot;
         if (hidden || guide == PinGuide.Guide.OFF || current == null) {
             return;
         }
-        Vec3 camera = Minecraft.getInstance().gameRenderer.getMainCamera().position();
-        MultiBufferSource consumers = context.consumers();
-        VertexConsumer buffer = consumers.getBuffer(RenderTypes.lines());
-        PoseStack matrices = context.matrices();
+        Vec3 camera = context.levelState().cameraRenderState.pos;
+        PoseStack matrices = context.poseStack();
         matrices.pushPose();
         matrices.translate(-camera.x, -camera.y, -camera.z);
-        PoseStack.Pose pose = matrices.last();
+        context.submitNodeCollector().submitCustomGeometry(
+                matrices, RenderTypes.lines(), (pose, buffer) -> draw(buffer, pose, guide, current));
+        matrices.popPose();
+    }
 
+    private static void draw(VertexConsumer buffer, PoseStack.Pose pose, PinGuide.Guide guide, Plot current) {
         float west = current.minX();
         float north = current.minZ();
         float east = current.maxX() + 1.0F;
@@ -261,11 +262,6 @@ public final class PlotGrid {
         outline(buffer, pose, west, north, east, south, y, LINE_COLOUR);
         if (PinSpoConfig.get().plotVertical) {
             walls(buffer, pose, west, north, east, south, y, verticalHeight(current), fractions);
-        }
-
-        matrices.popPose();
-        if (consumers instanceof MultiBufferSource.BufferSource source) {
-            source.endBatch(RenderTypes.lines());
         }
     }
 

@@ -1,6 +1,6 @@
 package net.koiduu.pinspo;
 
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractSliderButton;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.CycleButton;
@@ -292,7 +292,7 @@ public class PinSettingsScreen extends PinTabScreen {
     }
 
     /** The bar beside the panels: how far down the options the view is, and a handle to drag. */
-    private void renderScrollbar(GuiGraphics guiGraphics) {
+    private void renderScrollbar(GuiGraphicsExtractor guiGraphics) {
         if (maxScroll <= 0) {
             return;
         }
@@ -319,11 +319,11 @@ public class PinSettingsScreen extends PinTabScreen {
     }
 
     @Override
-    public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
+    public void extractRenderState(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTick) {
         int bottom = height - FOOTER_HEIGHT - 6;
         renderPanel(guiGraphics, MARGIN, CONTENT_TOP, leftX + columnWidth + 8, bottom);
         renderPanel(guiGraphics, rightX - 8, CONTENT_TOP, width - MARGIN, bottom);
-        super.render(guiGraphics, mouseX, mouseY, partialTick);
+        super.extractRenderState(guiGraphics, mouseX, mouseY, partialTick);
 
         PinTheme.sectionHeader(guiGraphics, font,
                 Component.translatable("screen.pinspo.section.overlay"), leftX, columnTop);

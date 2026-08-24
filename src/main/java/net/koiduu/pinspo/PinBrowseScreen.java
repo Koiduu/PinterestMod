@@ -1,6 +1,6 @@
 package net.koiduu.pinspo;
 
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.KeyEvent;
@@ -134,7 +134,7 @@ public class PinBrowseScreen extends PinTabScreen {
         }
         if (home) {
             // Searching leaves the feed rather than mixing its interests into the results.
-            minecraft.setScreen(new PinBrowseScreen(parent, newQuery));
+            minecraft.setScreenAndShow(new PinBrowseScreen(parent, newQuery));
             return;
         }
         query = newQuery;
@@ -205,8 +205,8 @@ public class PinBrowseScreen extends PinTabScreen {
     }
 
     @Override
-    public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
-        super.render(guiGraphics, mouseX, mouseY, partialTick);
+    public void extractRenderState(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTick) {
+        super.extractRenderState(guiGraphics, mouseX, mouseY, partialTick);
         grid.render(guiGraphics, font, mouseX, mouseY);
 
         if (grid.pins().isEmpty()) {
@@ -215,23 +215,23 @@ public class PinBrowseScreen extends PinTabScreen {
                     : loading
                             ? Component.translatable(home ? "screen.pinspo.loading_feed" : "screen.pinspo.searching")
                             : Component.translatable("screen.pinspo.search_prompt");
-            guiGraphics.drawCenteredString(font, message, width / 2, height / 2 - 14, COLOR_MUTED);
+            guiGraphics.centeredText(font, message, width / 2, height / 2 - 14, COLOR_MUTED);
             if (query.isEmpty()) {
-                guiGraphics.drawCenteredString(font,
+                guiGraphics.centeredText(font,
                         Component.translatable("screen.pinspo.suggestions"),
                         width / 2, height / 2 + 2, PinTheme.ACCENT);
             }
         } else {
-            guiGraphics.drawString(font, Component.translatable("screen.pinspo.save_hint"),
+            guiGraphics.text(font, Component.translatable("screen.pinspo.save_hint"),
                     MARGIN, CONTENT_TOP + 24, COLOR_MUTED, false);
             if (PinSpoConfig.get().personalise && PinTaste.hasProfile()) {
                 // Says why the order is not Pinterest's, so a reordered page never looks like a glitch.
                 Component tuned = Component.translatable("screen.pinspo.personalised");
-                guiGraphics.drawString(font, tuned, width - MARGIN - font.width(tuned),
+                guiGraphics.text(font, tuned, width - MARGIN - font.width(tuned),
                         CONTENT_TOP + 24, PinTheme.ACCENT, false);
             }
             if (loading) {
-                guiGraphics.drawCenteredString(font, Component.translatable("screen.pinspo.searching"),
+                guiGraphics.centeredText(font, Component.translatable("screen.pinspo.searching"),
                         width / 2, height - FOOTER_HEIGHT - 14, COLOR_MUTED);
             }
         }
@@ -251,7 +251,7 @@ public class PinBrowseScreen extends PinTabScreen {
             return false;
         }
         if (event.button() == GLFW.GLFW_MOUSE_BUTTON_RIGHT) {
-            minecraft.setScreen(new PinActionScreen(this, pin));
+            minecraft.setScreenAndShow(new PinActionScreen(this, pin));
             return true;
         }
         PinTaste.recordPick(query, pin);

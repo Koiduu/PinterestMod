@@ -1,6 +1,6 @@
 package net.koiduu.pinspo;
 
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.renderer.RenderPipelines;
@@ -67,7 +67,7 @@ public abstract class PinTabScreen extends Screen {
         if (target == tab()) {
             return;
         }
-        minecraft.setScreen(switch (target) {
+        minecraft.setScreenAndShow(switch (target) {
             case SEARCH -> new PinBrowseScreen(parent);
             case IMPORT -> new PinImportScreen(parent);
             case SAVED -> new SavedPinsScreen(parent);
@@ -77,12 +77,12 @@ public abstract class PinTabScreen extends Screen {
     }
 
     /**
-     * The chrome belongs to the background: drawing it in {@code render} put the bar's fill on top of the
-     * tab buttons, which is what made them look dimmed.
+     * The chrome belongs to the background: extracting it with the rest of the screen put the bar's fill on
+     * top of the tab buttons, which is what made them look dimmed.
      */
     @Override
-    public void renderBackground(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
-        super.renderBackground(guiGraphics, mouseX, mouseY, partialTick);
+    public void extractBackground(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTick) {
+        super.extractBackground(guiGraphics, mouseX, mouseY, partialTick);
         guiGraphics.fill(0, 0, width, TAB_HEIGHT + 12, PinTheme.BAR);
         guiGraphics.fill(0, TAB_HEIGHT + 12, width, TAB_HEIGHT + 13, PinTheme.BORDER);
         guiGraphics.fill(0, height - FOOTER_HEIGHT, width, height - FOOTER_HEIGHT + 1, PinTheme.BORDER);
@@ -90,17 +90,17 @@ public abstract class PinTabScreen extends Screen {
     }
 
     @Override
-    public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
-        super.render(guiGraphics, mouseX, mouseY, partialTick);
+    public void extractRenderState(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTick) {
+        super.extractRenderState(guiGraphics, mouseX, mouseY, partialTick);
         boolean overLogo = overLogo(mouseX, mouseY);
         guiGraphics.blit(RenderPipelines.GUI_TEXTURED, LOGO, MARGIN, 7, 0.0F, 0.0F,
                 LOGO_SIZE, LOGO_SIZE, 64, 64, 64, 64);
-        guiGraphics.drawString(font, Component.literal("PinSpo"), MARGIN + LOGO_SIZE + 3, 12,
+        guiGraphics.text(font, Component.literal("PinSpo"), MARGIN + LOGO_SIZE + 3, 12,
                 overLogo ? PinTheme.ACCENT : PinTheme.TEXT, false);
-        guiGraphics.drawString(font, title, MARGIN, TAB_HEIGHT + 20, COLOR_TEXT, false);
+        guiGraphics.text(font, title, MARGIN, TAB_HEIGHT + 20, COLOR_TEXT, false);
         if (overLogo) {
             // The bar has no room next to the wordmark, so the hint goes in the empty left half of the footer.
-            guiGraphics.drawString(font, Component.translatable("screen.pinspo.open_home"),
+            guiGraphics.text(font, Component.translatable("screen.pinspo.open_home"),
                     MARGIN, height - FOOTER_HEIGHT + 12, COLOR_MUTED, false);
         }
         PinNotifications.render(guiGraphics, width);
@@ -108,11 +108,11 @@ public abstract class PinTabScreen extends Screen {
     }
 
     /** A half-size signature along the very bottom edge: there if you look for it, quiet if you do not. */
-    private void renderCredit(GuiGraphics guiGraphics) {
+    private void renderCredit(GuiGraphicsExtractor guiGraphics) {
         guiGraphics.pose().pushMatrix();
         guiGraphics.pose().scale(0.5F, 0.5F);
         // Halved coordinates, so the line lands in the last few pixels of the bottom-left corner.
-        guiGraphics.drawString(font, CREDIT, MARGIN * 2, (height - 6) * 2, PinTheme.CREDIT, false);
+        guiGraphics.text(font, CREDIT, MARGIN * 2, (height - 6) * 2, PinTheme.CREDIT, false);
         guiGraphics.pose().popMatrix();
     }
 
@@ -125,14 +125,14 @@ public abstract class PinTabScreen extends Screen {
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubled) {
         if (overLogo((int) event.x(), (int) event.y())) {
-            minecraft.setScreen(PinBrowseScreen.home(parent));
+            minecraft.setScreenAndShow(PinBrowseScreen.home(parent));
             return true;
         }
         return super.mouseClicked(event, doubled);
     }
 
     /** Draws a subtle rounded-ish backing panel behind a region of content. */
-    protected void renderPanel(GuiGraphics guiGraphics, int left, int top, int right, int bottom) {
+    protected void renderPanel(GuiGraphicsExtractor guiGraphics, int left, int top, int right, int bottom) {
         PinTheme.panel(guiGraphics, left, top, right - left, bottom - top);
     }
 
@@ -145,6 +145,6 @@ public abstract class PinTabScreen extends Screen {
     public void onClose() {
         // Leaving PinSpo entirely: the grid textures are no longer needed.
         ThumbnailCache.clear();
-        minecraft.setScreen(parent);
+        minecraft.setScreenAndShow(parent);
     }
 }

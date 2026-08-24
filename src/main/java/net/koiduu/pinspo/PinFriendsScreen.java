@@ -1,6 +1,6 @@
 package net.koiduu.pinspo;
 
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.KeyEvent;
@@ -100,7 +100,7 @@ public class PinFriendsScreen extends PinTabScreen {
         paste.active = selected != null;
         addRenderableWidget(paste);
         addRenderableWidget(PinButton.of(chatLeft + (actionWidth + 4) * 3, CONTENT_TOP, actionWidth, 18,
-                blockedLabel(), () -> minecraft.setScreen(new PinBlockedScreen(this))));
+                blockedLabel(), () -> minecraft.setScreenAndShow(new PinBlockedScreen(this))));
 
         messageBox = new EditBox(font, chatLeft, chatBottom + 4, width - MARGIN - chatLeft - 54, 18,
                 Component.translatable("screen.pinspo.message"));
@@ -185,7 +185,7 @@ public class PinFriendsScreen extends PinTabScreen {
         // Mojang is asked first, so a typo is caught instead of silently messaging nobody.
         feedback = Component.translatable("screen.pinspo.checking_name", name);
         MojangNames.exists(name).thenAccept(exists -> minecraft.execute(() -> {
-            if (minecraft.screen != this) {
+            if (minecraft.gui.screen() != this) {
                 return;
             }
             if (!exists) {
@@ -281,11 +281,11 @@ public class PinFriendsScreen extends PinTabScreen {
     }
 
     @Override
-    public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
+    public void extractRenderState(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTick) {
         PinTheme.panel(guiGraphics, MARGIN - 4, listTop - 4, SIDEBAR_WIDTH + 8, listBottom - listTop + 8);
         PinTheme.panel(guiGraphics, chatLeft - 4, listTop - 4, width - MARGIN - chatLeft + 8,
                 listBottom - listTop + 8);
-        super.render(guiGraphics, mouseX, mouseY, partialTick);
+        super.extractRenderState(guiGraphics, mouseX, mouseY, partialTick);
 
         renderFriends(guiGraphics, mouseX, mouseY);
         renderConversation(guiGraphics, mouseX, mouseY);
@@ -293,15 +293,15 @@ public class PinFriendsScreen extends PinTabScreen {
         Component hint = feedback != null
                 ? feedback
                 : Component.translatable(sentHintKey());
-        guiGraphics.drawString(font, font.plainSubstrByWidth(hint.getString(), width - MARGIN * 2 - 90),
+        guiGraphics.text(font, font.plainSubstrByWidth(hint.getString(), width - MARGIN * 2 - 90),
                 MARGIN, height - FOOTER_HEIGHT + 12,
                 feedback != null ? PinTheme.ACCENT : PinTheme.TEXT_MUTED, false);
     }
 
-    private void renderFriends(GuiGraphics guiGraphics, int mouseX, int mouseY) {
+    private void renderFriends(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY) {
         renderRequests(guiGraphics);
         if (friends.isEmpty()) {
-            guiGraphics.drawString(font,
+            guiGraphics.text(font,
                     font.plainSubstrByWidth(
                             Component.translatable("screen.pinspo.no_friends").getString(), SIDEBAR_WIDTH),
                     MARGIN + 2, friendsTop + 4, PinTheme.TEXT_MUTED, false);
@@ -323,49 +323,49 @@ public class PinFriendsScreen extends PinTabScreen {
             }
             int unread = PinFriends.unread(friend);
             int nameWidth = SIDEBAR_WIDTH - 10 - (unread > 0 ? 14 : 0);
-            guiGraphics.drawString(font, font.plainSubstrByWidth(friend, nameWidth),
+            guiGraphics.text(font, font.plainSubstrByWidth(friend, nameWidth),
                     MARGIN + 6, y + 5, isSelected ? PinTheme.TEXT : PinTheme.TEXT_MUTED, false);
             if (unread > 0) {
                 String badge = unread > 9 ? "9+" : String.valueOf(unread);
                 guiGraphics.fill(MARGIN + SIDEBAR_WIDTH - 16, y + 3,
                         MARGIN + SIDEBAR_WIDTH - 4, y + 14, PinTheme.ACCENT);
-                guiGraphics.drawString(font, badge, MARGIN + SIDEBAR_WIDTH - 13, y + 5, PinTheme.TEXT, false);
+                guiGraphics.text(font, badge, MARGIN + SIDEBAR_WIDTH - 13, y + 5, PinTheme.TEXT, false);
             }
         }
         guiGraphics.disableScissor();
     }
 
     /** The requests waiting to be answered, above the friend list, each with its own accept/decline. */
-    private void renderRequests(GuiGraphics guiGraphics) {
+    private void renderRequests(GuiGraphicsExtractor guiGraphics) {
         if (requests.isEmpty()) {
             return;
         }
-        guiGraphics.drawString(font, Component.translatable("screen.pinspo.requests"),
+        guiGraphics.text(font, Component.translatable("screen.pinspo.requests"),
                 MARGIN + 2, listTop, PinTheme.ACCENT, false);
         int shown = Math.min(requests.size(), MAX_SHOWN_REQUESTS);
         for (int index = 0; index < shown; index++) {
             int y = listTop + 10 + index * REQUEST_ROW_HEIGHT;
             PinTheme.card(guiGraphics, MARGIN, y, SIDEBAR_WIDTH, REQUEST_ROW_HEIGHT - 2, false);
-            guiGraphics.drawString(font,
+            guiGraphics.text(font,
                     font.plainSubstrByWidth(requests.get(index), SIDEBAR_WIDTH - 44),
                     MARGIN + 4, y + 5, PinTheme.TEXT, false);
         }
         if (requests.size() > shown) {
-            guiGraphics.drawString(font,
+            guiGraphics.text(font,
                     Component.translatable("screen.pinspo.more_requests", requests.size() - shown),
                     MARGIN + 2, listTop + 10 + shown * REQUEST_ROW_HEIGHT, PinTheme.TEXT_MUTED, false);
         }
     }
 
-    private void renderConversation(GuiGraphics guiGraphics, int mouseX, int mouseY) {
+    private void renderConversation(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY) {
         int chatWidth = width - MARGIN - chatLeft;
         if (selected == null) {
-            guiGraphics.drawString(font, Component.translatable("screen.pinspo.no_friends_selected"),
+            guiGraphics.text(font, Component.translatable("screen.pinspo.no_friends_selected"),
                     chatLeft + 2, listTop + 4, PinTheme.TEXT_MUTED, false);
             return;
         }
         if (conversation.isEmpty()) {
-            guiGraphics.drawString(font, Component.translatable("screen.pinspo.no_messages"),
+            guiGraphics.text(font, Component.translatable("screen.pinspo.no_messages"),
                     chatLeft + 2, listTop + 4, PinTheme.TEXT_MUTED, false);
             return;
         }
@@ -384,7 +384,7 @@ public class PinFriendsScreen extends PinTabScreen {
         PinGrid.renderScrollbar(guiGraphics, chatLeft + chatWidth - 4, listTop, chatBottom, chatScroll, content);
     }
 
-    private void renderBubble(GuiGraphics guiGraphics, PinFriends.Message message, int y, int chatWidth,
+    private void renderBubble(GuiGraphicsExtractor guiGraphics, PinFriends.Message message, int y, int chatWidth,
                               int mouseX, int mouseY) {
         boolean outgoing = message.outgoing();
         int bubbleWidth = message.pin() == null
@@ -401,7 +401,7 @@ public class PinFriendsScreen extends PinTabScreen {
                 hovered ? PinTheme.ACCENT : PinTheme.BORDER);
 
         if (message.pin() == null) {
-            guiGraphics.drawString(font, font.plainSubstrByWidth(bubbleText(message), bubbleWidth - 10),
+            guiGraphics.text(font, font.plainSubstrByWidth(bubbleText(message), bubbleWidth - 10),
                     x + 5, y + 4, PinTheme.TEXT, false);
             return;
         }
@@ -411,9 +411,9 @@ public class PinFriendsScreen extends PinTabScreen {
                     PIN_THUMB, PIN_THUMB, thumbnail.width(), thumbnail.height(),
                     thumbnail.width(), thumbnail.height(), 0xFFFFFFFF);
         }
-        guiGraphics.drawString(font, Component.translatable("screen.pinspo.reference"),
+        guiGraphics.text(font, Component.translatable("screen.pinspo.reference"),
                 x + PIN_THUMB + 8, y + 8, PinTheme.TEXT, false);
-        guiGraphics.drawString(font, Component.translatable("screen.pinspo.click_to_pin"),
+        guiGraphics.text(font, Component.translatable("screen.pinspo.click_to_pin"),
                 x + PIN_THUMB + 8, y + 22, hovered ? PinTheme.ACCENT : PinTheme.TEXT_MUTED, false);
     }
 
@@ -448,7 +448,7 @@ public class PinFriendsScreen extends PinTabScreen {
             if (index >= 0 && index < friends.size()) {
                 if (event.button() == GLFW.GLFW_MOUSE_BUTTON_RIGHT) {
                     // Unfriending and blocking used to happen on a single right-click; now they are asked for.
-                    minecraft.setScreen(new PinFriendOptionsScreen(this, friends.get(index)));
+                    minecraft.setScreenAndShow(new PinFriendOptionsScreen(this, friends.get(index)));
                     return true;
                 }
                 selected = friends.get(index);
@@ -461,7 +461,7 @@ public class PinFriendsScreen extends PinTabScreen {
             PinFriends.Message message = messageAt(event.y());
             if (message != null && message.pin() != null) {
                 if (event.button() == GLFW.GLFW_MOUSE_BUTTON_RIGHT) {
-                    minecraft.setScreen(new PinActionScreen(this, message.pin()));
+                    minecraft.setScreenAndShow(new PinActionScreen(this, message.pin()));
                 } else {
                     PinnedImage.pin(message.pin());
                     onClose();

@@ -4,12 +4,12 @@ import com.mojang.blaze3d.platform.InputConstants;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
-import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
+import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
 import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.VanillaHudElements;
-import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderEvents;
+import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
@@ -59,12 +59,12 @@ public class PinSpoClient implements ClientModInitializer {
 
     @Override
     public void onInitializeClient() {
-        KeyBindingHelper.registerKeyBinding(OPEN_KEY);
-        KeyBindingHelper.registerKeyBinding(GUIDE_KEY);
-        KeyBindingHelper.registerKeyBinding(PLOT_KEY);
-        KeyBindingHelper.registerKeyBinding(VERTICAL_KEY);
+        KeyMappingHelper.registerKeyMapping(OPEN_KEY);
+        KeyMappingHelper.registerKeyMapping(GUIDE_KEY);
+        KeyMappingHelper.registerKeyMapping(PLOT_KEY);
+        KeyMappingHelper.registerKeyMapping(VERTICAL_KEY);
 
-        WorldRenderEvents.BEFORE_TRANSLUCENT.register(PlotGrid::render);
+        LevelRenderEvents.AFTER_TRANSLUCENT_TERRAIN.register(PlotGrid::render);
 
         HudElementRegistry.attachElementAfter(
                 VanillaHudElements.MISC_OVERLAYS,
@@ -110,8 +110,8 @@ public class PinSpoClient implements ClientModInitializer {
         while (GUIDE_KEY.consumeClick()) {
             PinGuide.Guide guide = PinnedImage.cycleGuide();
             if (client.player != null) {
-                client.player.displayClientMessage(
-                        Component.translatable("message.pinspo.guide", guide.label()), true);
+                client.player.sendOverlayMessage(
+                        Component.translatable("message.pinspo.guide", guide.label()));
             }
         }
         PlotGrid.tick(client);
@@ -133,7 +133,7 @@ public class PinSpoClient implements ClientModInitializer {
                 } else {
                     message = Component.translatable("message.pinspo.plot_guide", guide.label());
                 }
-                client.player.displayClientMessage(message, true);
+                client.player.sendOverlayMessage(message);
             }
         }
         while (VERTICAL_KEY.consumeClick()) {
@@ -149,17 +149,17 @@ public class PinSpoClient implements ClientModInitializer {
                         : "message.pinspo.plot_vertical_off");
             }
             if (client.player != null) {
-                client.player.displayClientMessage(message, true);
+                client.player.sendOverlayMessage(message);
             }
         }
         while (OPEN_KEY.consumeClick()) {
-            if (client.screen != null) {
+            if (client.gui.screen() != null) {
                 continue;
             }
             if (PinnedImage.isPinned()) {
-                client.setScreen(new PinSettingsScreen(null));
+                client.setScreenAndShow(new PinSettingsScreen(null));
             } else {
-                client.setScreen(new PinBrowseScreen(null));
+                client.setScreenAndShow(new PinBrowseScreen(null));
             }
         }
     }

@@ -4,7 +4,7 @@ import com.mojang.blaze3d.platform.NativeImage;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.network.chat.Component;
@@ -396,7 +396,7 @@ public final class PinnedImage {
         }
     }
 
-    public static void render(GuiGraphics guiGraphics) {
+    public static void render(GuiGraphicsExtractor guiGraphics) {
         if (hidden || texture == null || imageWidth <= 0 || imageHeight <= 0) {
             return;
         }
@@ -442,7 +442,7 @@ public final class PinnedImage {
     }
 
     /** Blurred copy of the reference, drawn oversized behind it. */
-    private static void renderBackdrop(GuiGraphics guiGraphics, PinSpoConfig config,
+    private static void renderBackdrop(GuiGraphicsExtractor guiGraphics, PinSpoConfig config,
                                       int x, int y, int width, int height, int alpha) {
         if (!config.blurBackdrop || blurTexture == null) {
             return;
@@ -474,7 +474,7 @@ public final class PinnedImage {
     }
 
     /** Half-scale attribution tucked under the overlay, fading with the overlay's own opacity. */
-    private static void renderCredit(GuiGraphics guiGraphics, PinSpoConfig config,
+    private static void renderCredit(GuiGraphicsExtractor guiGraphics, PinSpoConfig config,
                                     int x, int y, int width, int alpha) {
         if (!config.showCredit || config.pinnedCredit.isEmpty()) {
             return;
@@ -482,7 +482,7 @@ public final class PinnedImage {
         Font font = Minecraft.getInstance().font;
         guiGraphics.pose().pushMatrix();
         guiGraphics.pose().scale(0.5F, 0.5F);
-        guiGraphics.drawString(font, font.plainSubstrByWidth(config.pinnedCredit, width * 2),
+        guiGraphics.text(font, font.plainSubstrByWidth(config.pinnedCredit, width * 2),
                 x * 2, (y + 1) * 2, alpha << 24 | (PinTheme.TEXT_MUTED & 0xFFFFFF), false);
         guiGraphics.pose().popMatrix();
     }
@@ -491,7 +491,7 @@ public final class PinnedImage {
         Minecraft client = Minecraft.getInstance();
         client.execute(() -> {
             if (client.player != null) {
-                client.player.displayClientMessage(Component.translatable(translationKey), false);
+                client.player.sendSystemMessage(Component.translatable(translationKey));
             }
         });
     }

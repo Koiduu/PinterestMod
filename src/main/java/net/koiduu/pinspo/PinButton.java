@@ -1,7 +1,7 @@
 package net.koiduu.pinspo;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
 import net.minecraft.client.input.MouseButtonEvent;
@@ -46,7 +46,7 @@ public class PinButton extends AbstractWidget {
     }
 
     @Override
-    protected void renderWidget(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
+    protected void extractWidgetRenderState(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTick) {
         boolean hovered = isHovered() && active;
         int fill;
         int border;
@@ -70,7 +70,7 @@ public class PinButton extends AbstractWidget {
 
         int color = !active ? PinTheme.TEXT_DISABLED : selected || hovered ? PinTheme.TEXT : PinTheme.TEXT_SOFT;
         var font = Minecraft.getInstance().font;
-        guiGraphics.drawString(font, font.plainSubstrByWidth(getMessage().getString(), width - 6),
+        guiGraphics.text(font, font.plainSubstrByWidth(getMessage().getString(), width - 6),
                 getX() + (width - Math.min(width - 6, font.width(getMessage()))) / 2,
                 getY() + (height - 8) / 2, color, true);
     }

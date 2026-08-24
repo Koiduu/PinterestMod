@@ -1,6 +1,6 @@
 package net.koiduu.pinspo;
 
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
 
 import java.util.Locale;
@@ -47,7 +47,7 @@ public final class PinGuide {
     }
 
     /** Draws the guide inside the rectangle the reference was blitted into. */
-    public static void render(GuiGraphics guiGraphics, Guide guide, int x, int y, int width, int height,
+    public static void render(GuiGraphicsExtractor guiGraphics, Guide guide, int x, int y, int width, int height,
                               int overlayAlpha) {
         if (guide == Guide.OFF || width < 8 || height < 8) {
             return;
@@ -69,7 +69,7 @@ public final class PinGuide {
     }
 
     /** Horizontal and vertical lines at the given fractions of the frame. */
-    private static void lattice(GuiGraphics guiGraphics, int x, int y, int width, int height, int colour,
+    private static void lattice(GuiGraphicsExtractor guiGraphics, int x, int y, int width, int height, int colour,
                                 float... fractions) {
         for (float fraction : fractions) {
             int lineX = x + Math.round(width * fraction);
@@ -80,7 +80,7 @@ public final class PinGuide {
     }
 
     /** Both diagonals plus the reciprocals dropped from the opposite corners. */
-    private static void diagonals(GuiGraphics guiGraphics, int x, int y, int width, int height, int colour) {
+    private static void diagonals(GuiGraphicsExtractor guiGraphics, int x, int y, int width, int height, int colour) {
         int right = x + width;
         int bottom = y + height;
         line(guiGraphics, x, y, right, bottom, colour);
@@ -97,7 +97,7 @@ public final class PinGuide {
      * Fibonacci spiral: repeatedly cut the largest square off the frame and draw the quarter circle
      * inside it, rotating a quarter turn each time.
      */
-    private static void spiral(GuiGraphics guiGraphics, int x, int y, int width, int height, int colour) {
+    private static void spiral(GuiGraphicsExtractor guiGraphics, int x, int y, int width, int height, int colour) {
         float left = x;
         float top = y;
         float right = x + width;
@@ -129,7 +129,7 @@ public final class PinGuide {
         }
     }
 
-    private static void arc(GuiGraphics guiGraphics, float centreX, float centreY, float radius,
+    private static void arc(GuiGraphicsExtractor guiGraphics, float centreX, float centreY, float radius,
                            float fromDegrees, float toDegrees, int colour) {
         int previousX = Integer.MIN_VALUE;
         int previousY = Integer.MIN_VALUE;
@@ -146,7 +146,7 @@ public final class PinGuide {
     }
 
     /** Minecraft can only fill rectangles, so slanted lines are stepped a pixel at a time. */
-    private static void line(GuiGraphics guiGraphics, int fromX, int fromY, int toX, int toY, int colour) {
+    private static void line(GuiGraphicsExtractor guiGraphics, int fromX, int fromY, int toX, int toY, int colour) {
         int deltaX = Math.abs(toX - fromX);
         int deltaY = Math.abs(toY - fromY);
         int stepX = fromX < toX ? 1 : -1;
@@ -171,7 +171,7 @@ public final class PinGuide {
         }
     }
 
-    private static void outline(GuiGraphics guiGraphics, int x, int y, int width, int height, int colour) {
+    private static void outline(GuiGraphicsExtractor guiGraphics, int x, int y, int width, int height, int colour) {
         guiGraphics.fill(x, y, x + width, y + 1, colour);
         guiGraphics.fill(x, y + height - 1, x + width, y + height, colour);
         guiGraphics.fill(x, y, x + 1, y + height, colour);
