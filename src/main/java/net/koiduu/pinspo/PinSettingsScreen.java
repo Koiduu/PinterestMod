@@ -22,6 +22,8 @@ public class PinSettingsScreen extends PinTabScreen {
     private int leftX;
     private int rightX;
     private int columnTop;
+    /** Forgetting the taste profile cannot be undone, so the button asks once before it does it. */
+    private boolean confirmForget;
 
     public PinSettingsScreen(@Nullable Screen parent) {
         super(Component.translatable("screen.pinspo.settings"), parent);
@@ -83,6 +85,28 @@ public class PinSettingsScreen extends PinTabScreen {
                 });
         removePin.active = PinnedImage.isPinned();
         addRenderableWidget(removePin);
+        y += WIDGET_HEIGHT + SPACING;
+        addRenderableWidget(CycleButton
+                .onOffBuilder(config.personalise)
+                .create(leftX, y, columnWidth, WIDGET_HEIGHT,
+                        Component.translatable("option.pinspo.personalise"),
+                        (button, value) -> {
+                            config.personalise = value;
+                            config.save();
+                        }));
+        y += WIDGET_HEIGHT + SPACING;
+        PinButton forget = PinButton.of(leftX, y, columnWidth, WIDGET_HEIGHT,
+                Component.translatable(confirmForget
+                        ? "option.pinspo.forget_taste.confirm"
+                        : "option.pinspo.forget_taste"), () -> {
+                    if (confirmForget) {
+                        PinTaste.forget();
+                    }
+                    confirmForget = !confirmForget;
+                    rebuild();
+                });
+        forget.active = confirmForget || PinTaste.hasProfile();
+        addRenderableWidget(forget);
 
         y = columnTop + HEADER_HEIGHT;
         addRenderableWidget(CycleButton

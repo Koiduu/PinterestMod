@@ -181,7 +181,7 @@ public class PinBrowseScreen extends PinTabScreen {
                 exhausted = true;
                 return;
             }
-            grid.addPins(page.pins());
+            grid.addPins(PinTaste.rank(requested, page.pins()));
             bookmark = page.bookmark();
             if (home) {
                 // One page per interest keeps the feed mixed instead of turning into a single search.
@@ -224,6 +224,12 @@ public class PinBrowseScreen extends PinTabScreen {
         } else {
             guiGraphics.drawString(font, Component.translatable("screen.pinspo.save_hint"),
                     MARGIN, CONTENT_TOP + 24, COLOR_MUTED, false);
+            if (PinSpoConfig.get().personalise && PinTaste.hasProfile()) {
+                // Says why the order is not Pinterest's, so a reordered page never looks like a glitch.
+                Component tuned = Component.translatable("screen.pinspo.personalised");
+                guiGraphics.drawString(font, tuned, width - MARGIN - font.width(tuned),
+                        CONTENT_TOP + 24, PinTheme.ACCENT, false);
+            }
             if (loading) {
                 guiGraphics.drawCenteredString(font, Component.translatable("screen.pinspo.searching"),
                         width / 2, height - FOOTER_HEIGHT - 14, COLOR_MUTED);
@@ -248,7 +254,7 @@ public class PinBrowseScreen extends PinTabScreen {
             minecraft.setScreen(new PinActionScreen(this, pin));
             return true;
         }
-        PinTaste.recordQuery(query);
+        PinTaste.recordPick(query, pin);
         PinnedImage.pin(pin);
         onClose();
         return true;

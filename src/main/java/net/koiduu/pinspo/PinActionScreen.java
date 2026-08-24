@@ -115,7 +115,7 @@ public class PinActionScreen extends Screen {
     /** Sends to the clicked friend, or saves into the clicked folder. */
     private void choose(String row) {
         if (mode == Mode.SAVE) {
-            SavedPins.add(row, pin);
+            SavedPins.keep(row, pin);
             onClose();
             return;
         }
@@ -140,7 +140,7 @@ public class PinActionScreen extends Screen {
         if (mode == Mode.SAVE) {
             String folder = SavedPins.createFolder(value);
             if (!folder.isEmpty()) {
-                SavedPins.add(folder, pin);
+                SavedPins.keep(folder, pin);
                 onClose();
             }
             return;

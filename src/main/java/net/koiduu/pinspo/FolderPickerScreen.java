@@ -35,7 +35,7 @@ public class FolderPickerScreen extends Screen {
         if (pin != null) {
             for (String folder : List.copyOf(SavedPins.folderNames())) {
                 addRenderableWidget(PinButton.of(x, y, WIDGET_WIDTH, 20, Component.literal(folder), () -> {
-                    SavedPins.add(folder, pin);
+                    SavedPins.keep(folder, pin);
                     onClose();
                 }));
                 y += 22;
@@ -66,7 +66,7 @@ public class FolderPickerScreen extends Screen {
         String folder = nameBox.getValue().trim();
         SavedPins.createFolder(folder);
         if (pin != null) {
-            SavedPins.add(folder, pin);
+            SavedPins.keep(folder, pin);
         }
         onClose();
     }
