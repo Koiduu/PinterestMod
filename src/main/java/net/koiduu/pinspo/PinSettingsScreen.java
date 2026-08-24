@@ -278,11 +278,17 @@ public class PinSettingsScreen extends PinTabScreen {
         return super.mouseReleased(event);
     }
 
-    /** Puts the grabbed point of the bar under the cursor. */
+    /** Centres the bar's handle on the cursor, so the very bottom of the list is reachable by drag. */
     private void scrollToBar(double mouseY) {
         int track = contentBottom - contentTop;
-        double fraction = (mouseY - contentTop) / Math.max(1, track);
-        applyScroll((int) Math.round(fraction * maxScroll));
+        int handle = handleHeight(track);
+        double travel = Math.max(1, track - handle);
+        double fraction = (mouseY - contentTop - handle / 2.0) / travel;
+        applyScroll((int) Math.round(Math.clamp(fraction, 0.0D, 1.0D) * maxScroll));
+    }
+
+    private int handleHeight(int track) {
+        return Math.max(16, track * track / (track + maxScroll));
     }
 
     /** The bar beside the panels: how far down the options the view is, and a handle to drag. */
@@ -291,7 +297,7 @@ public class PinSettingsScreen extends PinTabScreen {
             return;
         }
         int track = contentBottom - contentTop;
-        int handle = Math.max(16, track * track / (track + maxScroll));
+        int handle = handleHeight(track);
         int top = contentTop + (track - handle) * scroll / maxScroll;
         int x = width - MARGIN + 2;
         PinTheme.roundedRect(guiGraphics, x, contentTop, 4, track, PinTheme.CARD);
