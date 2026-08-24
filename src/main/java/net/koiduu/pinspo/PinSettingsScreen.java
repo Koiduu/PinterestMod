@@ -286,7 +286,7 @@ public class PinSettingsScreen extends PinTabScreen {
     }
 
     /** The bar beside the panels: how far down the options the view is, and a handle to drag. */
-    private void renderScrollbar(GuiGraphics guiGraphics) {
+    private void renderScrollbar(GuiGraphicsExtractor guiGraphics) {
         if (maxScroll <= 0) {
             return;
         }
