@@ -227,7 +227,7 @@ public class PinBrowseScreen extends PinTabScreen {
             if (PinSpoConfig.get().personalise && PinTaste.hasProfile()) {
                 // Says why the order is not Pinterest's, so a reordered page never looks like a glitch.
                 Component tuned = Component.translatable("screen.pinspo.personalised");
-                guiGraphics.drawString(font, tuned, width - MARGIN - font.width(tuned),
+                guiGraphics.text(font, tuned, width - MARGIN - font.width(tuned),
                         CONTENT_TOP + 24, PinTheme.ACCENT, false);
             }
             if (loading) {
