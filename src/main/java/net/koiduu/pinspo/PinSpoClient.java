@@ -5,11 +5,14 @@ import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
+import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.VanillaHudElements;
+import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderEvents;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import org.lwjgl.glfw.GLFW;
 import org.slf4j.Logger;
@@ -30,27 +33,125 @@ public class PinSpoClient implements ClientModInitializer {
             CATEGORY
     );
 
+    /** Cycles the composition guide drawn over the reference. */
+    public static final KeyMapping GUIDE_KEY = new KeyMapping(
+            "key.pinspo.guide",
+            InputConstants.Type.KEYSYM,
+            GLFW.GLFW_KEY_G,
+            CATEGORY
+    );
+
+    /** Cycles the composition guide drawn on the build plot's floor. */
+    public static final KeyMapping PLOT_KEY = new KeyMapping(
+            "key.pinspo.plot",
+            InputConstants.Type.KEYSYM,
+            GLFW.GLFW_KEY_H,
+            CATEGORY
+    );
+
+    /** Toggles the plot guide's vertical lattice; sneaking steps its height instead. */
+    public static final KeyMapping VERTICAL_KEY = new KeyMapping(
+            "key.pinspo.vertical",
+            InputConstants.Type.KEYSYM,
+            GLFW.GLFW_KEY_J,
+            CATEGORY
+    );
+
     @Override
     public void onInitializeClient() {
         KeyBindingHelper.registerKeyBinding(OPEN_KEY);
+        KeyBindingHelper.registerKeyBinding(GUIDE_KEY);
+        KeyBindingHelper.registerKeyBinding(PLOT_KEY);
+        KeyBindingHelper.registerKeyBinding(VERTICAL_KEY);
+
+        WorldRenderEvents.BEFORE_TRANSLUCENT.register(PlotGrid::render);
 
         HudElementRegistry.attachElementAfter(
                 VanillaHudElements.MISC_OVERLAYS,
                 Identifier.fromNamespaceAndPath(MOD_ID, "pinned_image"),
-                (guiGraphics, deltaTracker) -> PinnedImage.render(guiGraphics)
+                (guiGraphics, deltaTracker) -> {
+                    PinnedImage.render(guiGraphics);
+                    PinNotifications.render(guiGraphics, guiGraphics.guiWidth());
+                }
         );
 
         ClientTickEvents.END_CLIENT_TICK.register(PinSpoClient::onEndTick);
-        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> BrowserHolder.dispose());
-        ClientLifecycleEvents.CLIENT_STOPPING.register(client -> {
-            BrowserHolder.dispose();
-            PinnedImage.clear();
+        PinnedImage.restore();
+
+        // Hypixel announces themes as system messages, but relayed player chat arrives on CHAT. Both are
+        // read on the ALLOW events, because a PinSpo request or reference is swallowed rather than shown:
+        // it is the mod talking to itself and has no business in the player's chat box.
+        ClientReceiveMessageEvents.ALLOW_GAME.register((message, overlay) -> {
+            if (overlay) {
+                return true;
+            }
+            BuildBattleMode.onChatMessage(message);
+            return handle(message);
         });
+        ClientReceiveMessageEvents.ALLOW_CHAT.register((message, signedMessage, sender, params, timestamp) -> {
+            BuildBattleMode.onChatMessage(message);
+            return handle(message);
+        });
+
+        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
+            BuildBattleMode.reset();
+            PlotGrid.reset();
+        });
+        ClientLifecycleEvents.CLIENT_STOPPING.register(client -> PinnedImage.clear());
+    }
+
+    /** Files a chat line into PinSpo and says whether the player should still see it. */
+    private static boolean handle(Component message) {
+        PinChat.onChatMessage(message);
+        return !PinChat.isProtocolLine(message);
     }
 
     private static void onEndTick(Minecraft client) {
-        BrowserHolder.tick();
-
+        while (GUIDE_KEY.consumeClick()) {
+            PinGuide.Guide guide = PinnedImage.cycleGuide();
+            if (client.player != null) {
+                client.player.displayClientMessage(
+                        Component.translatable("message.pinspo.guide", guide.label()), true);
+            }
+        }
+        PlotGrid.tick(client);
+        while (PLOT_KEY.consumeClick()) {
+            // Sneaking re-measures where the player stands instead of stepping to the next guide, because
+            // the plot is otherwise measured once and left alone while the player moves around their build.
+            boolean remeasure = client.player != null && client.player.isShiftKeyDown();
+            if (remeasure) {
+                PlotGrid.rescan();
+            }
+            PinGuide.Guide guide = remeasure ? PinSpoConfig.get().floorGuide : PlotGrid.cycle();
+            if (client.player != null) {
+                int[] size = PlotGrid.size();
+                Component message;
+                if (guide != PinGuide.Guide.OFF && size.length == 0) {
+                    message = Component.translatable("message.pinspo.no_plot");
+                } else if (remeasure) {
+                    message = Component.translatable("message.pinspo.plot_measured", size[0], size[1]);
+                } else {
+                    message = Component.translatable("message.pinspo.plot_guide", guide.label());
+                }
+                client.player.displayClientMessage(message, true);
+            }
+        }
+        while (VERTICAL_KEY.consumeClick()) {
+            // Sneaking steps the wall height rather than switching the lattice off and on again.
+            boolean resize = client.player != null && client.player.isShiftKeyDown();
+            Component message;
+            if (resize) {
+                message = Component.translatable(
+                        "message.pinspo.plot_height", PlotGrid.cycleVerticalHeight());
+            } else {
+                message = Component.translatable(PlotGrid.toggleVertical()
+                        ? "message.pinspo.plot_vertical_on"
+                        : "message.pinspo.plot_vertical_off");
+            }
+            if (client.player != null) {
+                client.player.displayClientMessage(message, true);
+            }
+        }
         while (OPEN_KEY.consumeClick()) {
             if (client.screen != null) {
                 continue;
@@ -58,7 +159,7 @@ public class PinSpoClient implements ClientModInitializer {
             if (PinnedImage.isPinned()) {
                 client.setScreen(new PinSettingsScreen(null));
             } else {
-                client.setScreen(new PinterestBrowserScreen(null));
+                client.setScreen(new PinBrowseScreen(null));
             }
         }
     }

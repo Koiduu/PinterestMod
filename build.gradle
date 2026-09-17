@@ -1,29 +1,36 @@
 plugins {
-    id 'fabric-loom' version "${loom_version}"
+    // Obfuscated Minecraft (1.x) needs the remapping plugin; Minecraft 26+ ships unobfuscated and uses the
+    // no-remap one, so both are pulled in and only the right one is applied below.
+    id 'fabric-loom' version "${loom_version}" apply false
+    id 'net.fabricmc.fabric-loom' version "${loom_version}" apply false
 }
 
-version = project.mod_version
+// The Minecraft version is part of the jar name, so builds for different versions sit side by side.
+version = "${project.mod_version}+mc${project.minecraft_version}"
 group = project.maven_group
+
+// Minecraft 26 and later ship unobfuscated, so those builds need no mappings and no remapping, and they
+// run on Java 25 instead of 21.
+def unobfuscated = !project.minecraft_version.startsWith('1.')
+def javaRelease = unobfuscated ? 25 : 21
+apply plugin: unobfuscated ? 'net.fabricmc.fabric-loom' : 'fabric-loom'
 
 base {
     archivesName = project.archives_base_name
 }
 
-repositories {
-    maven {
-        name = 'DimasKama'
-        url = uri('https://maven.dimaskama.net/releases')
-    }
-}
-
 dependencies {
     minecraft "com.mojang:minecraft:${project.minecraft_version}"
-    mappings loom.officialMojangMappings()
-    modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
-    modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
-    modImplementation "net.dimaskama:mcef-modern:${project.mcef_modern_version}"
-    // Provided at runtime by MCEF Modern's nested jars; needed here for the CEF types it exposes.
-    compileOnly "me.friwi:jcef-api:${project.jcef_api_version}"
+    if (!unobfuscated) {
+        mappings loom.officialMojangMappings()
+    }
+    if (unobfuscated) {
+        implementation "net.fabricmc:fabric-loader:${project.loader_version}"
+        implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+    } else {
+        modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+        modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+    }
 }
 
 processResources {
@@ -31,20 +38,20 @@ processResources {
     filesMatching('fabric.mod.json') {
         expand 'version': project.version,
                 'minecraft_version': project.minecraft_version,
+                'minecraft_dependency': project.minecraft_dependency,
                 'loader_version': project.loader_version,
-                'fabric_version': project.fabric_version,
-                'mcef_modern_version': project.mcef_modern_version
+                'fabric_version': project.fabric_version
     }
 }
 
 tasks.withType(JavaCompile).configureEach {
-    it.options.release = 21
+    it.options.release = javaRelease
 }
 
 java {
     withSourcesJar()
-    sourceCompatibility = JavaVersion.VERSION_21
-    targetCompatibility = JavaVersion.VERSION_21
+    sourceCompatibility = JavaVersion.toVersion(javaRelease)
+    targetCompatibility = JavaVersion.toVersion(javaRelease)
 }
 
 jar {
