@@ -47,6 +47,11 @@ public final class PinNotifications {
                 Component.translatable("notify.pinspo.open_friends"));
     }
 
+    public static void wallShared(String name) {
+        show(Component.translatable("notify.pinspo.wall", name),
+                Component.translatable("notify.pinspo.wall_detail"));
+    }
+
     public static void message(String name) {
         show(Component.translatable("notify.pinspo.message", name),
                 Component.translatable("notify.pinspo.open_friends"));

@@ -67,6 +67,10 @@ public final class PinnedImage {
         return texture != null;
     }
 
+    public static String currentUrl() {
+        return isPinned() ? PinSpoConfig.get().pinnedUrl : "";
+    }
+
     public static boolean isDownloading() {
         return downloading;
     }
@@ -127,10 +131,26 @@ public final class PinnedImage {
 
     @Nullable
     private static NativeImage download(String url) {
+        NativeImage image = loadFullImage(url);
+        return image == null ? null : downscale(image);
+    }
+
+    /** Downscaled to overlay size, for anything that only needs to show the image. Call off-thread. */
+    @Nullable
+    public static NativeImage loadImage(String url) {
+        return download(url);
+    }
+
+    /**
+     * Every original pixel, for the colour picker. Blocking (network or disk), so call it off-thread; the
+     * caller owns and must close the image.
+     */
+    @Nullable
+    public static NativeImage loadFullImage(String url) {
         if (LocalImages.isLocalUrl(url)) {
             byte[] local = LocalImages.read(url);
             try {
-                return local == null ? null : downscale(ImageDecoder.decode(local));
+                return local == null ? null : ImageDecoder.decode(local);
             } catch (IOException e) {
                 PinSpoClient.LOGGER.warn("Could not decode local image {}", url, e);
                 return null;
@@ -143,7 +163,7 @@ public final class PinnedImage {
         Path cacheFile = CACHE_DIR.resolve(cacheName(url));
         if (Files.isRegularFile(cacheFile)) {
             try {
-                return downscale(ImageDecoder.decode(Files.readAllBytes(cacheFile)));
+                return ImageDecoder.decode(Files.readAllBytes(cacheFile));
             } catch (Exception e) {
                 PinSpoClient.LOGGER.warn("Discarding unreadable cached image {}", cacheFile, e);
                 try {
@@ -180,7 +200,7 @@ public final class PinnedImage {
             PinSpoClient.LOGGER.warn("Could not cache pinned image", e);
         }
         try {
-            return downscale(ImageDecoder.decode(bytes));
+            return ImageDecoder.decode(bytes);
         } catch (IOException e) {
             PinSpoClient.LOGGER.warn("Could not decode image {}", imageUrl, e);
             return null;
@@ -438,7 +458,6 @@ public final class PinnedImage {
                 height,
                 alpha << 24 | 0xFFFFFF
         );
-        PinGuide.render(guiGraphics, config.guide, x, y, width, height, alpha);
     }
 
     /** Blurred copy of the reference, drawn oversized behind it. */
@@ -463,14 +482,6 @@ public final class PinnedImage {
                 blurHeight,
                 alpha * 3 / 4 << 24 | 0xFFFFFF
         );
-    }
-
-    /** Steps to the next composition guide and returns the one now in use. */
-    public static PinGuide.Guide cycleGuide() {
-        PinSpoConfig config = PinSpoConfig.get();
-        config.guide = config.guide.next();
-        config.save();
-        return config.guide;
     }
 
     /** Half-scale attribution tucked under the overlay, fading with the overlay's own opacity. */

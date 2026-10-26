@@ -33,43 +33,35 @@ public class PinSpoClient implements ClientModInitializer {
             CATEGORY
     );
 
-    /** Cycles the composition guide drawn over the reference. */
-    public static final KeyMapping GUIDE_KEY = new KeyMapping(
-            "key.pinspo.guide",
+    /** Puts the pinned image on the wall being looked at, or moves it there; sneak to edit it instead. */
+    public static final KeyMapping WALL_KEY = new KeyMapping(
+            "key.pinspo.wall",
             InputConstants.Type.KEYSYM,
-            GLFW.GLFW_KEY_G,
+            GLFW.GLFW_KEY_B,
             CATEGORY
     );
 
-    /** Cycles the composition guide drawn on the build plot's floor. */
-    public static final KeyMapping PLOT_KEY = new KeyMapping(
-            "key.pinspo.plot",
+    /** Plants a live camera where the player is looking; sneak to arrange the camera windows instead. */
+    public static final KeyMapping CAMERA_KEY = new KeyMapping(
+            "key.pinspo.camera",
             InputConstants.Type.KEYSYM,
-            GLFW.GLFW_KEY_H,
-            CATEGORY
-    );
-
-    /** Toggles the plot guide's vertical lattice; sneaking steps its height instead. */
-    public static final KeyMapping VERTICAL_KEY = new KeyMapping(
-            "key.pinspo.vertical",
-            InputConstants.Type.KEYSYM,
-            GLFW.GLFW_KEY_J,
+            GLFW.GLFW_KEY_K,
             CATEGORY
     );
 
     @Override
     public void onInitializeClient() {
         KeyMappingHelper.registerKeyMapping(OPEN_KEY);
-        KeyMappingHelper.registerKeyMapping(GUIDE_KEY);
-        KeyMappingHelper.registerKeyMapping(PLOT_KEY);
-        KeyMappingHelper.registerKeyMapping(VERTICAL_KEY);
+        KeyMappingHelper.registerKeyMapping(WALL_KEY);
+        KeyMappingHelper.registerKeyMapping(CAMERA_KEY);
 
-        LevelRenderEvents.AFTER_TRANSLUCENT_TERRAIN.register(PlotGrid::render);
+        LevelRenderEvents.AFTER_TRANSLUCENT_TERRAIN.register(WallPhotos::render);
 
         HudElementRegistry.attachElementAfter(
                 VanillaHudElements.MISC_OVERLAYS,
                 Identifier.fromNamespaceAndPath(MOD_ID, "pinned_image"),
                 (guiGraphics, deltaTracker) -> {
+                    CameraPoints.render(guiGraphics);
                     PinnedImage.render(guiGraphics);
                     PinNotifications.render(guiGraphics, guiGraphics.guiWidth());
                 }
@@ -95,7 +87,8 @@ public class PinSpoClient implements ClientModInitializer {
 
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
             BuildBattleMode.reset();
-            PlotGrid.reset();
+            WallPhotos.onDisconnect();
+            CameraRenderer.releaseAll();
         });
         ClientLifecycleEvents.CLIENT_STOPPING.register(client -> PinnedImage.clear());
     }
@@ -107,49 +100,25 @@ public class PinSpoClient implements ClientModInitializer {
     }
 
     private static void onEndTick(Minecraft client) {
-        while (GUIDE_KEY.consumeClick()) {
-            PinGuide.Guide guide = PinnedImage.cycleGuide();
-            if (client.player != null) {
-                client.player.sendOverlayMessage(
-                        Component.translatable("message.pinspo.guide", guide.label()));
+        boolean sneaking = client.player != null && client.player.isShiftKeyDown();
+        while (WALL_KEY.consumeClick()) {
+            if (client.gui.screen() != null) {
+                continue;
             }
-        }
-        PlotGrid.tick(client);
-        while (PLOT_KEY.consumeClick()) {
-            // Sneaking re-measures where the player stands instead of stepping to the next guide, because
-            // the plot is otherwise measured once and left alone while the player moves around their build.
-            boolean remeasure = client.player != null && client.player.isShiftKeyDown();
-            if (remeasure) {
-                PlotGrid.rescan();
-            }
-            PinGuide.Guide guide = remeasure ? PinSpoConfig.get().floorGuide : PlotGrid.cycle();
-            if (client.player != null) {
-                int[] size = PlotGrid.size();
-                Component message;
-                if (guide != PinGuide.Guide.OFF && size.length == 0) {
-                    message = Component.translatable("message.pinspo.no_plot");
-                } else if (remeasure) {
-                    message = Component.translatable("message.pinspo.plot_measured", size[0], size[1]);
-                } else {
-                    message = Component.translatable("message.pinspo.plot_guide", guide.label());
-                }
-                client.player.sendOverlayMessage(message);
-            }
-        }
-        while (VERTICAL_KEY.consumeClick()) {
-            // Sneaking steps the wall height rather than switching the lattice off and on again.
-            boolean resize = client.player != null && client.player.isShiftKeyDown();
-            Component message;
-            if (resize) {
-                message = Component.translatable(
-                        "message.pinspo.plot_height", PlotGrid.cycleVerticalHeight());
+            if (sneaking && WallPhotos.mine() != null) {
+                client.setScreenAndShow(new WallEditScreen(null));
             } else {
-                message = Component.translatable(PlotGrid.toggleVertical()
-                        ? "message.pinspo.plot_vertical_on"
-                        : "message.pinspo.plot_vertical_off");
+                WallPhotos.placeAtCrosshair(client);
             }
-            if (client.player != null) {
-                client.player.sendOverlayMessage(message);
+        }
+        while (CAMERA_KEY.consumeClick()) {
+            if (client.gui.screen() != null) {
+                continue;
+            }
+            if (sneaking) {
+                client.setScreenAndShow(new CameraLayoutScreen(null));
+            } else {
+                CameraPoints.plant(client);
             }
         }
         while (OPEN_KEY.consumeClick()) {

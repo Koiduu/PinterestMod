@@ -1,0 +1,149 @@
+package net.koiduu.pinspo;
+
+import com.mojang.blaze3d.GpuFormat;
+import com.mojang.blaze3d.pipeline.RenderTarget;
+import com.mojang.blaze3d.pipeline.TextureTarget;
+import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.textures.FilterMode;
+import net.koiduu.pinspo.mixin.CameraAccessor;
+import net.koiduu.pinspo.mixin.GameRendererAccessor;
+import net.minecraft.client.Camera;
+import net.minecraft.client.DeltaTracker;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.renderer.GameRenderer;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.phys.Vec3;
+import org.joml.Matrix4f;
+import org.joml.Vector4f;
+
+import java.util.IdentityHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.Collections;
+
+/**
+ * Renders the world a second time from a planted camera, straight after the player's own view, into an
+ * offscreen target the camera's window then shows. One camera is refreshed per frame, round robin, so two
+ * cameras cost about one extra world render rather than two.
+ */
+public final class CameraRenderer {
+
+    private static final Map<CameraPoints.Point, TextureTarget> TARGETS = new IdentityHashMap<>();
+    private static final Set<CameraPoints.Point> READY = Collections.newSetFromMap(new IdentityHashMap<>());
+    private static final Vector4f CLEAR = new Vector4f(0.0F, 0.0F, 0.0F, 1.0F);
+
+    private static boolean busy;
+    private static boolean broken;
+    private static int cursor;
+
+    private CameraRenderer() {
+    }
+
+    public static void afterLevel(GameRenderer gameRenderer, DeltaTracker deltaTracker) {
+        if (busy || broken) {
+            return;
+        }
+        Minecraft client = Minecraft.getInstance();
+        if (client.level == null || client.player == null) {
+            return;
+        }
+        List<CameraPoints.Point> visible = CameraPoints.visibleHere();
+        if (visible.isEmpty()) {
+            return;
+        }
+        CameraPoints.Point point = visible.get(Math.floorMod(cursor++, visible.size()));
+        Camera camera = gameRenderer.mainCamera();
+        if (!camera.isInitialized()) {
+            return;
+        }
+        CameraAccessor cameraAccess = (CameraAccessor) camera;
+        GameRendererAccessor rendererAccess = (GameRendererAccessor) gameRenderer;
+        RenderTarget main = gameRenderer.mainRenderTarget();
+        TextureTarget target = target(point, main.width, main.height);
+
+        Vec3 position = camera.position();
+        float yRot = camera.yRot();
+        float xRot = camera.xRot();
+        boolean detached = cameraAccess.pinspo$detached();
+        float partialTick = deltaTracker.getGameTimeDeltaPartialTick(false);
+        float entityPartialTick = camera.getCameraEntityPartialTicks(deltaTracker);
+
+        busy = true;
+        try {
+            cameraAccess.pinspo$setPosition(point.position());
+            cameraAccess.pinspo$setRotation(point.yaw, point.pitch);
+            // Detached, so the player's own body shows up in the view like any other entity.
+            cameraAccess.pinspo$setDetached(true);
+            refreshFrustum(camera, cameraAccess);
+            rendererAccess.pinspo$extractCamera(deltaTracker, partialTick, entityPartialTick);
+            client.levelExtractor.extract(deltaTracker, camera, partialTick);
+
+            rendererAccess.pinspo$setMainRenderTarget(target);
+            RenderSystem.getDevice().createCommandEncoder().clearColorAndDepthTextures(
+                    target.getColorTexture(), CLEAR, target.getDepthTexture(), 1.0D);
+            gameRenderer.renderLevel(deltaTracker);
+            READY.add(point);
+        } catch (Throwable error) {
+            broken = true;
+            PinSpoClient.LOGGER.error("Camera view failed; live cameras are off until the game restarts", error);
+            if (client.player != null) {
+                client.player.sendSystemMessage(Component.translatable("message.pinspo.camera_failed"));
+            }
+        } finally {
+            rendererAccess.pinspo$setMainRenderTarget(main);
+            cameraAccess.pinspo$setPosition(position);
+            cameraAccess.pinspo$setRotation(yRot, xRot);
+            cameraAccess.pinspo$setDetached(detached);
+            refreshFrustum(camera, cameraAccess);
+            try {
+                rendererAccess.pinspo$extractCamera(deltaTracker, partialTick, entityPartialTick);
+            } catch (Throwable ignored) {
+            }
+            busy = false;
+        }
+    }
+
+    private static void refreshFrustum(Camera camera, CameraAccessor access) {
+        access.pinspo$prepareCullFrustum(camera.getViewRotationMatrix(new Matrix4f()),
+                access.pinspo$cullProjection(), camera.position());
+    }
+
+    private static TextureTarget target(CameraPoints.Point point, int width, int height) {
+        TextureTarget target = TARGETS.get(point);
+        if (target == null) {
+            target = new TextureTarget("PinSpo camera", width, height, true, GpuFormat.RGBA8_UNORM);
+            TARGETS.put(point, target);
+        } else if (target.width != width || target.height != height) {
+            target.resize(width, height);
+        }
+        return target;
+    }
+
+    /** Shows the camera's latest frame; false while it has not rendered one yet. */
+    public static boolean draw(GuiGraphicsExtractor guiGraphics, CameraPoints.Point point,
+                               int x, int y, int width, int height) {
+        TextureTarget target = TARGETS.get(point);
+        if (target == null || !READY.contains(point) || target.getColorTextureView() == null) {
+            return false;
+        }
+        guiGraphics.blit(target.getColorTextureView(), RenderSystem.getSamplerCache().getClampToEdge(FilterMode.LINEAR),
+                x, y, x + width, y + height, 0.0F, 1.0F, 1.0F, 0.0F);
+        return true;
+    }
+
+    public static void release(CameraPoints.Point point) {
+        READY.remove(point);
+        TextureTarget target = TARGETS.remove(point);
+        if (target != null) {
+            target.destroyBuffers();
+        }
+    }
+
+    public static void releaseAll() {
+        for (CameraPoints.Point point : List.copyOf(TARGETS.keySet())) {
+            release(point);
+        }
+    }
+}

@@ -26,7 +26,7 @@ public abstract class PinTabScreen extends Screen {
     private static final String CREDIT = "Made by Koidu";
 
     public enum Tab {
-        SEARCH, IMPORT, SAVED, FRIENDS, SETTINGS
+        SEARCH, IMPORT, SAVED, BUILD, FRIENDS, SETTINGS
     }
 
     @Nullable
@@ -71,6 +71,7 @@ public abstract class PinTabScreen extends Screen {
             case SEARCH -> new PinBrowseScreen(parent);
             case IMPORT -> new PinImportScreen(parent);
             case SAVED -> new SavedPinsScreen(parent);
+            case BUILD -> new PinBuildScreen(parent);
             case FRIENDS -> new PinFriendsScreen(parent);
             case SETTINGS -> new PinSettingsScreen(parent);
         });
