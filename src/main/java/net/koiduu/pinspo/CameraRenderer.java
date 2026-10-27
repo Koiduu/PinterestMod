@@ -67,6 +67,8 @@ public final class CameraRenderer {
         float yRot = camera.yRot();
         float xRot = camera.xRot();
         boolean detached = cameraAccess.pinspo$detached();
+        float fov = cameraAccess.pinspo$fov();
+        float viewFov = point.fov > 0.0F ? point.fov : fov;
         float partialTick = deltaTracker.getGameTimeDeltaPartialTick(false);
         float entityPartialTick = camera.getCameraEntityPartialTicks(deltaTracker);
 
@@ -76,6 +78,7 @@ public final class CameraRenderer {
             cameraAccess.pinspo$setRotation(point.yaw, point.pitch);
             // Detached, so the player's own body shows up in the view like any other entity.
             cameraAccess.pinspo$setDetached(true);
+            setFov(cameraAccess, viewFov);
             refreshFrustum(camera, cameraAccess);
             rendererAccess.pinspo$extractCamera(deltaTracker, partialTick, entityPartialTick);
             client.levelExtractor.extract(deltaTracker, camera, partialTick);
@@ -96,6 +99,7 @@ public final class CameraRenderer {
             cameraAccess.pinspo$setPosition(position);
             cameraAccess.pinspo$setRotation(yRot, xRot);
             cameraAccess.pinspo$setDetached(detached);
+            setFov(cameraAccess, fov);
             refreshFrustum(camera, cameraAccess);
             try {
                 rendererAccess.pinspo$extractCamera(deltaTracker, partialTick, entityPartialTick);
@@ -103,6 +107,14 @@ public final class CameraRenderer {
             }
             busy = false;
         }
+    }
+
+    /** Same projection the game sets up each frame, just with the camera's own field of view. */
+    private static void setFov(CameraAccessor access, float fov) {
+        Minecraft client = Minecraft.getInstance();
+        access.pinspo$setFov(fov);
+        access.pinspo$setupPerspective(0.05F, access.pinspo$depthFar(), fov,
+                client.getWindow().getWidth(), client.getWindow().getHeight());
     }
 
     private static void refreshFrustum(Camera camera, CameraAccessor access) {

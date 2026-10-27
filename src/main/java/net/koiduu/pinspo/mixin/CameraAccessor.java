@@ -23,6 +23,18 @@ public interface CameraAccessor {
     @Accessor("detached")
     void pinspo$setDetached(boolean detached);
 
+    @Accessor("fov")
+    float pinspo$fov();
+
+    @Accessor("fov")
+    void pinspo$setFov(float fov);
+
+    @Accessor("depthFar")
+    float pinspo$depthFar();
+
+    @Invoker("setupPerspective")
+    void pinspo$setupPerspective(float near, float far, float fov, float width, float height);
+
     @Invoker("createProjectionMatrixForCulling")
     Matrix4f pinspo$cullProjection();
 
