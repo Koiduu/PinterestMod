@@ -6,7 +6,7 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.network.chat.Component;
 import org.jetbrains.annotations.Nullable;
-import org.lwjgl.glfw.GLFW;
+import com.mojang.blaze3d.platform.InputConstants;
 
 /**
  * A slim side panel for adjusting the wall photo while looking at it: the world stays fully visible, so
@@ -102,11 +102,11 @@ public class WallEditScreen extends Screen {
     public boolean keyPressed(KeyEvent event) {
         double step = event.hasShiftDown() ? 1.0D : 0.25D;
         switch (event.key()) {
-            case GLFW.GLFW_KEY_UP -> WallPhotos.nudge(0, step, 0);
-            case GLFW.GLFW_KEY_DOWN -> WallPhotos.nudge(0, -step, 0);
-            case GLFW.GLFW_KEY_LEFT -> WallPhotos.nudge(-step, 0, 0);
-            case GLFW.GLFW_KEY_RIGHT -> WallPhotos.nudge(step, 0, 0);
-            case GLFW.GLFW_KEY_R -> WallPhotos.rotate();
+            case InputConstants.KEY_UP -> WallPhotos.nudge(0, step, 0);
+            case InputConstants.KEY_DOWN -> WallPhotos.nudge(0, -step, 0);
+            case InputConstants.KEY_LEFT -> WallPhotos.nudge(-step, 0, 0);
+            case InputConstants.KEY_RIGHT -> WallPhotos.nudge(step, 0, 0);
+            case InputConstants.KEY_R -> WallPhotos.rotate();
             default -> {
                 return super.keyPressed(event);
             }

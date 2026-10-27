@@ -8,7 +8,7 @@ import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.network.chat.Component;
 import org.jetbrains.annotations.Nullable;
-import org.lwjgl.glfw.GLFW;
+import com.mojang.blaze3d.platform.InputConstants;
 
 import java.util.List;
 import java.util.Objects;
@@ -446,7 +446,7 @@ public class PinFriendsScreen extends PinTabScreen {
                 && event.y() >= friendsTop && event.y() < listBottom) {
             int index = (int) ((event.y() - friendsTop) / FRIEND_ROW_HEIGHT);
             if (index >= 0 && index < friends.size()) {
-                if (event.button() == GLFW.GLFW_MOUSE_BUTTON_RIGHT) {
+                if (event.button() == InputConstants.MOUSE_BUTTON_RIGHT) {
                     // Unfriending and blocking used to happen on a single right-click; now they are asked for.
                     minecraft.setScreenAndShow(new PinFriendOptionsScreen(this, friends.get(index)));
                     return true;
@@ -460,7 +460,7 @@ public class PinFriendsScreen extends PinTabScreen {
         if (event.x() >= chatLeft && event.y() >= listTop && event.y() < chatBottom) {
             PinFriends.Message message = messageAt(event.y());
             if (message != null && message.pin() != null) {
-                if (event.button() == GLFW.GLFW_MOUSE_BUTTON_RIGHT) {
+                if (event.button() == InputConstants.MOUSE_BUTTON_RIGHT) {
                     minecraft.setScreenAndShow(new PinActionScreen(this, message.pin()));
                 } else {
                     PinnedImage.pin(message.pin());
@@ -487,7 +487,7 @@ public class PinFriendsScreen extends PinTabScreen {
 
     @Override
     public boolean keyPressed(KeyEvent event) {
-        if (event.key() == GLFW.GLFW_KEY_ENTER && messageBox != null && messageBox.isFocused()) {
+        if (event.key() == InputConstants.KEY_RETURN && messageBox != null && messageBox.isFocused()) {
             sendMessage();
             return true;
         }
