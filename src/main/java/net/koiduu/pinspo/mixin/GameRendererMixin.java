@@ -11,6 +11,14 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(GameRenderer.class)
 public abstract class GameRendererMixin {
 
+    /** A camera is a viewpoint, not a player: no arm or held item floating in its window. */
+    @Inject(method = "renderItemInHand", at = @At("HEAD"), cancellable = true)
+    private void pinspo$noHandInCameraViews(CallbackInfo ci) {
+        if (CameraRenderer.isRendering()) {
+            ci.cancel();
+        }
+    }
+
     @Inject(method = "renderLevel", at = @At("RETURN"))
     private void pinspo$renderCameraPoints(DeltaTracker deltaTracker, CallbackInfo ci) {
         CameraRenderer.afterLevel((GameRenderer) (Object) this, deltaTracker);

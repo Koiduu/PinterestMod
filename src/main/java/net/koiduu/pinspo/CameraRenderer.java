@@ -3,6 +3,7 @@ package net.koiduu.pinspo;
 import com.mojang.blaze3d.GpuFormat;
 import com.mojang.blaze3d.pipeline.RenderTarget;
 import com.mojang.blaze3d.pipeline.TextureTarget;
+import com.mojang.blaze3d.resource.CrossFrameResourcePool;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.textures.FilterMode;
 import net.koiduu.pinspo.mixin.CameraAccessor;
@@ -34,11 +35,21 @@ public final class CameraRenderer {
     private static final Set<CameraPoints.Point> READY = Collections.newSetFromMap(new IdentityHashMap<>());
     private static final Vector4f CLEAR = new Vector4f(0.0F, 0.0F, 0.0F, 1.0F);
 
+    /**
+     * Camera passes get their own pool of scratch targets. Sharing the game's meant the transparency and
+     * post passes of a camera could hand textures still holding camera pixels back to the player's own
+     * frame, which showed up as a faded ghost of another viewpoint across the screen.
+     */
+    private static CrossFrameResourcePool pool;
     private static boolean busy;
     private static boolean broken;
     private static int cursor;
 
     private CameraRenderer() {
+    }
+
+    public static boolean isRendering() {
+        return busy;
     }
 
     public static void afterLevel(GameRenderer gameRenderer, DeltaTracker deltaTracker) {
@@ -72,6 +83,7 @@ public final class CameraRenderer {
         float partialTick = deltaTracker.getGameTimeDeltaPartialTick(false);
         float entityPartialTick = camera.getCameraEntityPartialTicks(deltaTracker);
 
+        CrossFrameResourcePool gamePool = rendererAccess.pinspo$resourcePool();
         busy = true;
         try {
             cameraAccess.pinspo$setPosition(point.position());
@@ -83,6 +95,10 @@ public final class CameraRenderer {
             rendererAccess.pinspo$extractCamera(deltaTracker, partialTick, entityPartialTick);
             client.levelExtractor.extract(deltaTracker, camera, partialTick);
 
+            if (pool == null) {
+                pool = new CrossFrameResourcePool(3);
+            }
+            rendererAccess.pinspo$setResourcePool(pool);
             rendererAccess.pinspo$setMainRenderTarget(target);
             RenderSystem.getDevice().createCommandEncoder().clearColorAndDepthTextures(
                     target.getColorTexture(), CLEAR, target.getDepthTexture(), 1.0D);
@@ -96,6 +112,10 @@ public final class CameraRenderer {
             }
         } finally {
             rendererAccess.pinspo$setMainRenderTarget(main);
+            rendererAccess.pinspo$setResourcePool(gamePool);
+            if (pool != null) {
+                pool.endFrame();
+            }
             cameraAccess.pinspo$setPosition(position);
             cameraAccess.pinspo$setRotation(yRot, xRot);
             cameraAccess.pinspo$setDetached(detached);
