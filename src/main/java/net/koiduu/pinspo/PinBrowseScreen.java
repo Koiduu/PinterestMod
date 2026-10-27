@@ -7,7 +7,7 @@ import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 import org.jetbrains.annotations.Nullable;
-import org.lwjgl.glfw.GLFW;
+import com.mojang.blaze3d.platform.InputConstants;
 
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
@@ -250,7 +250,7 @@ public class PinBrowseScreen extends PinTabScreen {
         if (pin == null) {
             return false;
         }
-        if (event.button() == GLFW.GLFW_MOUSE_BUTTON_RIGHT) {
+        if (event.button() == InputConstants.MOUSE_BUTTON_RIGHT) {
             minecraft.setScreenAndShow(new PinActionScreen(this, pin));
             return true;
         }

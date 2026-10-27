@@ -114,9 +114,7 @@ public class ColourPickScreen extends PinTabScreen {
 
     private void chooseFile() {
         feedback = Component.translatable("screen.pinspo.choosing_file");
-        Util.nonCriticalIoPool().execute(() -> {
-            String chosen = PinImportScreen.openDialog();
-            minecraft.execute(() -> {
+        FileChooser.open(chosen -> {
                 feedback = null;
                 if (chosen == null) {
                     return;
@@ -127,7 +125,6 @@ public class ColourPickScreen extends PinTabScreen {
                     return;
                 }
                 load(pin.imageUrl());
-            });
         });
     }
 

@@ -1,6 +1,6 @@
 # PinSpo
 
-Client-side Fabric mod for Minecraft 26.2 that searches Pinterest in a native Minecraft screen and
+Client-side Fabric mod for Minecraft 26.3 that searches Pinterest in a native Minecraft screen and
 lets you turn any pin into a persistent picture-in-picture build reference. No Chromium, no browser
 runtime — just Pinterest's own image library drawn as plain textures.
 
@@ -44,7 +44,7 @@ stored in `config/pinspo.json`. The pinned image itself survives restarts too: i
 
 ## Requirements
 
-- Minecraft 26.2, Fabric Loader 0.19.3+, Fabric API 0.157.0+26.2
+- Minecraft 26.3, Fabric Loader 0.19.3+, Fabric API 0.157.0+26.2
 
 The 1.21.11 build lives on the `main` branch; this branch is the same mod ported to 26.2, which ships
 unobfuscated, runs on Java 25, and replaced immediate-mode GUI drawing with the render-state extractor.

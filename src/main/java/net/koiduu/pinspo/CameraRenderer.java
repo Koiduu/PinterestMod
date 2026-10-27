@@ -1,11 +1,11 @@
 package net.koiduu.pinspo;
 
-import com.mojang.blaze3d.GpuFormat;
+import com.mojang.renderpearl.api.GpuFormat;
 import com.mojang.blaze3d.pipeline.RenderTarget;
 import com.mojang.blaze3d.pipeline.TextureTarget;
 import com.mojang.blaze3d.resource.CrossFrameResourcePool;
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.textures.FilterMode;
+import com.mojang.renderpearl.api.textures.FilterMode;
 import net.koiduu.pinspo.mixin.CameraAccessor;
 import net.koiduu.pinspo.mixin.GameRendererAccessor;
 import net.minecraft.client.Camera;
@@ -81,7 +81,6 @@ public final class CameraRenderer {
         float fov = cameraAccess.pinspo$fov();
         float viewFov = point.fov > 0.0F ? point.fov : fov;
         float partialTick = deltaTracker.getGameTimeDeltaPartialTick(false);
-        float entityPartialTick = camera.getCameraEntityPartialTicks(deltaTracker);
 
         CrossFrameResourcePool gamePool = rendererAccess.pinspo$resourcePool();
         busy = true;
@@ -92,7 +91,7 @@ public final class CameraRenderer {
             cameraAccess.pinspo$setDetached(true);
             setFov(cameraAccess, viewFov);
             refreshFrustum(camera, cameraAccess);
-            rendererAccess.pinspo$extractCamera(deltaTracker, partialTick, entityPartialTick);
+            rendererAccess.pinspo$extractCamera(deltaTracker, partialTick);
             client.levelExtractor.extract(deltaTracker, camera, partialTick);
 
             if (pool == null) {
@@ -102,7 +101,7 @@ public final class CameraRenderer {
             rendererAccess.pinspo$setMainRenderTarget(target);
             RenderSystem.getDevice().createCommandEncoder().clearColorAndDepthTextures(
                     target.getColorTexture(), CLEAR, target.getDepthTexture(), 1.0D);
-            gameRenderer.renderLevel(deltaTracker);
+            gameRenderer.renderLevel();
             READY.add(point);
         } catch (Throwable error) {
             broken = true;
@@ -122,7 +121,7 @@ public final class CameraRenderer {
             setFov(cameraAccess, fov);
             refreshFrustum(camera, cameraAccess);
             try {
-                rendererAccess.pinspo$extractCamera(deltaTracker, partialTick, entityPartialTick);
+                rendererAccess.pinspo$extractCamera(deltaTracker, partialTick);
             } catch (Throwable ignored) {
             }
             busy = false;
@@ -145,7 +144,7 @@ public final class CameraRenderer {
     private static TextureTarget target(CameraPoints.Point point, int width, int height) {
         TextureTarget target = TARGETS.get(point);
         if (target == null) {
-            target = new TextureTarget("PinSpo camera", width, height, true, GpuFormat.RGBA8_UNORM);
+            target = new TextureTarget("PinSpo camera", width, height, GpuFormat.RGBA8_UNORM, GpuFormat.D32_FLOAT);
             TARGETS.put(point, target);
         } else if (target.width != width || target.height != height) {
             target.resize(width, height);

@@ -14,7 +14,6 @@ import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
-import org.lwjgl.glfw.GLFW;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -28,24 +27,24 @@ public class PinSpoClient implements ClientModInitializer {
 
     public static final KeyMapping OPEN_KEY = new KeyMapping(
             "key.pinspo.open",
-            InputConstants.Type.KEYSYM,
-            GLFW.GLFW_KEY_M,
+            InputConstants.Type.KEYBOARD,
+            InputConstants.KEY_M,
             CATEGORY
     );
 
     /** Puts the pinned image on the wall being looked at, or moves it there; sneak to edit it instead. */
     public static final KeyMapping WALL_KEY = new KeyMapping(
             "key.pinspo.wall",
-            InputConstants.Type.KEYSYM,
-            GLFW.GLFW_KEY_B,
+            InputConstants.Type.KEYBOARD,
+            InputConstants.KEY_B,
             CATEGORY
     );
 
     /** Plants a live camera where the player is looking; sneak to arrange the camera windows instead. */
     public static final KeyMapping CAMERA_KEY = new KeyMapping(
             "key.pinspo.camera",
-            InputConstants.Type.KEYSYM,
-            GLFW.GLFW_KEY_K,
+            InputConstants.Type.KEYBOARD,
+            InputConstants.KEY_K,
             CATEGORY
     );
 

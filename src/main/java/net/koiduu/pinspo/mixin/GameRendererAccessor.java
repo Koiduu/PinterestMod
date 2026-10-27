@@ -24,5 +24,5 @@ public interface GameRendererAccessor {
     void pinspo$setResourcePool(CrossFrameResourcePool pool);
 
     @Invoker("extractCamera")
-    void pinspo$extractCamera(DeltaTracker deltaTracker, float partialTick, float cameraEntityPartialTick);
+    void pinspo$extractCamera(DeltaTracker deltaTracker, float partialTick);
 }
