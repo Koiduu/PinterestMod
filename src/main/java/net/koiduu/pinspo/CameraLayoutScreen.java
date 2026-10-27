@@ -62,6 +62,14 @@ public class CameraLayoutScreen extends Screen {
             guiGraphics.fill(right - 2, bottom - HANDLE, right, bottom, PinTheme.ACCENT);
             // Close cross in the title strip.
             boolean overClose = overClose(box, mouseX, mouseY);
+            if (active) {
+                Component fov = Component.translatable("screen.pinspo.camera_fov", point.fov > 0.0F
+                        ? Math.round(point.fov) + "\u00b0"
+                        : Component.translatable("screen.pinspo.camera_fov_game").getString());
+                int fovWidth = font.width(fov) + 8;
+                guiGraphics.fill(box.x(), bottom - 12, box.x() + fovWidth, bottom, 0xC0000000);
+                guiGraphics.text(font, fov, box.x() + 4, bottom - 10, PinTheme.TEXT_SOFT, false);
+            }
             guiGraphics.text(font, "\u00d7", right - 8, box.y() + 1, overClose ? PinTheme.ACCENT : PinTheme.TEXT_MUTED, false);
         }
     }
@@ -88,6 +96,11 @@ public class CameraLayoutScreen extends Screen {
                 CameraPoints.toggle(point);
                 return true;
             }
+            if (event.button() == 1) {
+                point.fov = 0.0F;
+                CameraPoints.save();
+                return true;
+            }
             dragging = point;
             resizing = event.x() >= box.x() + box.width() - HANDLE * 1.5 && event.y() >= box.y() + box.height() - HANDLE * 1.5;
             grabX = event.x() - box.x();
@@ -95,6 +108,20 @@ public class CameraLayoutScreen extends Screen {
             return true;
         }
         return false;
+    }
+
+    @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
+        List<CameraPoints.Point> points = CameraPoints.visibleHere();
+        for (int i = points.size() - 1; i >= 0; i--) {
+            CameraPoints.Point point = points.get(i);
+            if (CameraPoints.box(point, width, height).contains(mouseX, mouseY)) {
+                CameraPoints.zoom(point, verticalAmount);
+                CameraPoints.save();
+                return true;
+            }
+        }
+        return super.mouseScrolled(mouseX, mouseY, horizontalAmount, verticalAmount);
     }
 
     @Override

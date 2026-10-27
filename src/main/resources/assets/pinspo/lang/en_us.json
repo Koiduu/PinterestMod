@@ -169,14 +169,14 @@
   "notify.pinspo.wall_detail": "It's on their build now",
   "camera.pinspo.name": "Camera %s",
   "camera.pinspo.starting": "Starting view…",
-  "screen.pinspo.camera_how": "Stand where you want a view and press %s. Each camera gets its own live window.",
+  "screen.pinspo.camera_how": "Stand where you want a view and press %s. Each camera gets its own live window; sneak + the key to move, resize or zoom them.",
   "screen.pinspo.camera_hide": "Hide",
   "screen.pinspo.camera_show": "Show",
   "screen.pinspo.camera_delete": "Delete",
   "screen.pinspo.camera_plant_here": "Plant here",
   "screen.pinspo.camera_arrange": "Arrange windows",
   "screen.pinspo.camera_layout": "Camera windows",
-  "screen.pinspo.camera_layout_hint": "Drag to move · drag the red corner to resize · × hides",
+  "screen.pinspo.camera_layout_hint": "Drag to move · red corner resizes · scroll zooms · right-click resets zoom · × hides",
   "screen.pinspo.camera_layout_empty": "No cameras showing. Press %s in-game to plant one.",
   "message.pinspo.camera_planted": "%s planted. Sneak + %s to move or resize its window.",
   "message.pinspo.camera_full": "You already have %s cameras here. Delete one in the Build tab (M).",
@@ -195,5 +195,7 @@
   "screen.pinspo.colour_hint": "Move over the image",
   "screen.pinspo.colour_blocks": "Closest blocks",
   "screen.pinspo.colour_palette_loading": "Reading block colours…",
-  "screen.pinspo.section.search": "Search"
+  "screen.pinspo.section.search": "Search",
+  "screen.pinspo.camera_fov": "FOV %s",
+  "screen.pinspo.camera_fov_game": "game"
 }

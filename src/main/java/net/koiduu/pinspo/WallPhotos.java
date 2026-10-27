@@ -10,6 +10,7 @@ import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.client.renderer.texture.DynamicTexture;
+import net.minecraft.client.renderer.fog.FogData;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
@@ -346,19 +347,49 @@ public final class WallPhotos {
         Vec3 right = axes[0].scale(halfWidth);
         Vec3 up = axes[1].scale(halfHeight);
         Vec3 normal = axes[2];
+        Vec3 centre = new Vec3(photo.x - camera.x, photo.y - camera.y, photo.z - camera.z);
         int colour = Math.round(photo.opacity * 255.0F) << 24 | 0xFFFFFF;
+        double limit = visibleRange(context);
+        int cells = Math.clamp((int) Math.ceil(Math.max(halfWidth, halfHeight) / 2.0F), 1, 32);
 
-        PoseStack matrices = context.poseStack();
-        matrices.pushPose();
-        matrices.translate(photo.x - camera.x, photo.y - camera.y, photo.z - camera.z);
-        context.submitNodeCollector().submitCustomGeometry(matrices, RenderTypes.entityTranslucent(texture.id()),
-                (pose, buffer) -> {
-                    corner(buffer, pose, up.subtract(right), 0.0F, 0.0F, colour, normal);
-                    corner(buffer, pose, up.reverse().subtract(right), 0.0F, 1.0F, colour, normal);
-                    corner(buffer, pose, right.subtract(up), 1.0F, 1.0F, colour, normal);
-                    corner(buffer, pose, right.add(up), 1.0F, 0.0F, colour, normal);
+        context.submitNodeCollector().submitCustomGeometry(context.poseStack(),
+                RenderTypes.entityTranslucent(texture.id()), (pose, buffer) -> {
+                    for (int column = 0; column < cells; column++) {
+                        float u0 = (float) column / cells;
+                        float u1 = (float) (column + 1) / cells;
+                        for (int row = 0; row < cells; row++) {
+                            float v0 = (float) row / cells;
+                            float v1 = (float) (row + 1) / cells;
+                            corner(buffer, pose, point(centre, right, up, u0, v0, limit), u0, v0, colour, normal);
+                            corner(buffer, pose, point(centre, right, up, u0, v1, limit), u0, v1, colour, normal);
+                            corner(buffer, pose, point(centre, right, up, u1, v1, limit), u1, v1, colour, normal);
+                            corner(buffer, pose, point(centre, right, up, u1, v0, limit), u1, v0, colour, normal);
+                        }
+                    }
                 });
-        matrices.popPose();
+    }
+
+    /**
+     * How far from the camera geometry can sit before fog fades it or the far plane slices it off — the
+     * cause of photos vanishing in the distance or ending in a hard edge.
+     */
+    private static double visibleRange(LevelRenderContext context) {
+        FogData fog = context.levelState().cameraRenderState.fogData;
+        if (fog == null) {
+            return Double.MAX_VALUE;
+        }
+        return 0.85D * Math.max(8.0D, Math.min(fog.renderDistanceStart, fog.environmentalStart));
+    }
+
+    /**
+     * A point of the photo relative to the camera. Anything beyond the visible range is pulled straight
+     * towards the camera along its own line of sight: it lands on exactly the same pixel, only nearer, so a
+     * photo of any size reads at any distance while the near part keeps its true depth against the build.
+     */
+    private static Vec3 point(Vec3 centre, Vec3 right, Vec3 up, float u, float v, double limit) {
+        Vec3 at = centre.add(right.scale(u * 2.0F - 1.0F)).add(up.scale(1.0F - v * 2.0F));
+        double distance = at.length();
+        return distance > limit ? at.scale(limit / distance) : at;
     }
 
     private static void corner(VertexConsumer buffer, PoseStack.Pose pose, Vec3 at, float u, float v,

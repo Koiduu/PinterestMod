@@ -26,6 +26,8 @@ public final class CameraPoints {
     public static final int MAX_PER_WORLD = 4;
     public static final float MIN_WINDOW = 0.12F;
     public static final float MAX_WINDOW = 0.9F;
+    public static final int MIN_FOV = 5;
+    public static final int MAX_FOV = 110;
     private static final int TITLE_HEIGHT = 11;
 
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
@@ -41,6 +43,8 @@ public final class CameraPoints {
         public float yaw;
         public float pitch;
         public boolean visible = true;
+        /** Field of view in degrees; 0 follows the game's own FOV setting. Lower is more zoomed in. */
+        public float fov;
         public float windowX = 0.02F;
         public float windowY = 0.55F;
         /** Window width as a fraction of the screen; the height keeps the screen's own shape. */
@@ -129,6 +133,14 @@ public final class CameraPoints {
         save();
     }
 
+    /** Zooms by changing the field of view; {@code steps} > 0 zooms in. */
+    public static void zoom(Point point, double steps) {
+        float base = point.fov > 0.0F ? point.fov : Minecraft.getInstance().options.fov().get();
+        // Multiplicative, so each notch feels the same whether the view is wide or already tight.
+        float next = (float) (base * Math.pow(0.9D, steps));
+        point.fov = Math.clamp(Math.round(next), MIN_FOV, MAX_FOV);
+    }
+
     private static int freeNumber(List<Point> here) {
         for (int number = 1; ; number++) {
             String name = Component.translatable("camera.pinspo.name", number).getString();
@@ -163,8 +175,14 @@ public final class CameraPoints {
                     PinTheme.BORDER);
             guiGraphics.fill(box.x(), box.y(), box.x() + box.width(), box.viewTop(), PinTheme.BAR);
             guiGraphics.fill(box.x() + 3, box.y() + 4, box.x() + 6, box.y() + 7, PinTheme.ACCENT);
-            guiGraphics.text(font, font.plainSubstrByWidth(point.name, box.width() - 12),
+            String fovLabel = point.fov > 0.0F ? Math.round(point.fov) + "\u00b0" : "";
+            int fovWidth = fovLabel.isEmpty() ? 0 : font.width(fovLabel) + 14;
+            guiGraphics.text(font, font.plainSubstrByWidth(point.name, box.width() - 12 - fovWidth),
                     box.x() + 9, box.y() + 2, PinTheme.TEXT_SOFT, false);
+            if (!fovLabel.isEmpty()) {
+                guiGraphics.text(font, fovLabel, box.x() + box.width() - fovWidth, box.y() + 2,
+                        PinTheme.TEXT_MUTED, false);
+            }
             int viewHeight = box.height() - (box.viewTop() - box.y());
             if (!CameraRenderer.draw(guiGraphics, point, box.x(), box.viewTop(), box.width(), viewHeight)) {
                 guiGraphics.fill(box.x(), box.viewTop(), box.x() + box.width(), box.y() + box.height(),
