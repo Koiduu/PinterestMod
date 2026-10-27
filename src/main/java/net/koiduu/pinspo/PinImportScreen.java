@@ -157,7 +157,7 @@ public class PinImportScreen extends PinTabScreen {
     }
 
     @Nullable
-    private static String openDialog() {
+    static String openDialog() {
         try (MemoryStack stack = MemoryStack.stackPush()) {
             PointerBuffer filters = stack.mallocPointer(5);
             filters.put(stack.UTF8("*.png")).put(stack.UTF8("*.jpg")).put(stack.UTF8("*.jpeg"))

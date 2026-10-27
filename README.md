@@ -19,7 +19,17 @@ runtime — just Pinterest's own image library drawn as plain textures.
   Requests, messages and references travel as Minecraft private messages (`/msg`), so a reference arrives
   in their PinSpo and one click puts it on their screen. On servers that block `/msg`, **Copy code** /
   **Paste code** does the same by hand.
-- **Settings** holds the overlay controls and the Build Battle toggles.
+- **Build** holds the building tools:
+  - **Wall photo** — look at a wall, floor or ceiling and press **B**: your pinned image sticks to it.
+    Press **B** again to move it to wherever you look; **sneak + B** opens a side panel (opacity, width,
+    arrow-key nudging, rotate, "seen by: only me / friends"). Shared photos go to your PinSpo friends
+    over `/msg` (Pinterest images only), so they see it on your build too.
+  - **Camera points** — press **K** to plant a camera exactly where you stand and look. Each camera gets
+    its own live window on the HUD (up to 4 per world); **sneak + K** lets you drag windows around and
+    resize them from the red corner.
+  - **Colour to block** — open the pinned image (or any file), hover or click a pixel, and get its hex
+    plus the closest blocks from your current resource pack.
+- **Settings** holds the overlay controls, Build Battle toggles and search personalisation.
 - **Escape** — closes the current screen without changing the pin.
 
 There is no account or login: search runs against Pinterest's public search endpoint, so everything works
@@ -29,7 +39,8 @@ Settings (opacity, size, screen corner, offsets, original-resolution preference,
 stored in `config/pinspo.json`. The pinned image itself survives restarts too: its bytes are cached under
 `config/pinspo/images` and re-pinned on startup without hitting the network. Imported files are copied into
 `config/pinspo/local` so they keep working after you move the original. Folders live in
-`config/pinspo-saved.json`, friends and chats in `config/pinspo-friends.json`.
+`config/pinspo-saved.json`, friends and chats in `config/pinspo-friends.json`, wall photos in
+`config/pinspo-walls.json` and camera points in `config/pinspo-cameras.json`.
 
 ## Requirements
 

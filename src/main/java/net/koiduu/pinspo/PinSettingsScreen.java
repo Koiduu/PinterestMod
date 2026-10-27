@@ -29,6 +29,7 @@ public class PinSettingsScreen extends PinTabScreen {
     private int leftX;
     private int rightX;
     private int columnTop;
+    private int searchHeaderY;
     /** Forgetting the taste profile cannot be undone, so the button asks once before it does it. */
     private boolean confirmForget;
 
@@ -88,6 +89,24 @@ public class PinSettingsScreen extends PinTabScreen {
                         }));
         y += WIDGET_HEIGHT + SPACING;
         addOption(CycleButton
+                .onOffBuilder(config.showCredit)
+                .create(leftX, y, columnWidth, WIDGET_HEIGHT,
+                        Component.translatable("option.pinspo.show_credit"),
+                        (button, value) -> {
+                            config.showCredit = value;
+                            config.save();
+                        }));
+        y += WIDGET_HEIGHT + SPACING;
+        addOption(CycleButton
+                .onOffBuilder(config.blurBackdrop)
+                .create(leftX, y, columnWidth, WIDGET_HEIGHT,
+                        Component.translatable("option.pinspo.blur_backdrop"),
+                        (button, value) -> {
+                            config.blurBackdrop = value;
+                            config.save();
+                        }));
+        y += WIDGET_HEIGHT + SPACING;
+        addOption(CycleButton
                 .onOffBuilder(config.preferOriginalResolution)
                 .create(leftX, y, columnWidth, WIDGET_HEIGHT,
                         Component.translatable("option.pinspo.prefer_original"),
@@ -104,27 +123,6 @@ public class PinSettingsScreen extends PinTabScreen {
         removePin.active = PinnedImage.isPinned();
         addOption(removePin);
         y += WIDGET_HEIGHT + SPACING;
-        addOption(CycleButton
-                .onOffBuilder(config.personalise)
-                .create(leftX, y, columnWidth, WIDGET_HEIGHT,
-                        Component.translatable("option.pinspo.personalise"),
-                        (button, value) -> {
-                            config.personalise = value;
-                            config.save();
-                        }));
-        y += WIDGET_HEIGHT + SPACING;
-        PinButton forget = PinButton.of(leftX, y, columnWidth, WIDGET_HEIGHT,
-                Component.translatable(confirmForget
-                        ? "option.pinspo.forget_taste.confirm"
-                        : "option.pinspo.forget_taste"), () -> {
-                    if (confirmForget) {
-                        PinTaste.forget();
-                    }
-                    confirmForget = !confirmForget;
-                    rebuild();
-                });
-        forget.active = confirmForget || PinTaste.hasProfile();
-        addOption(forget);
 
         y = columnTop + HEADER_HEIGHT;
         addOption(CycleButton
@@ -145,72 +143,30 @@ public class PinSettingsScreen extends PinTabScreen {
                             config.save();
                         }));
         y += WIDGET_HEIGHT + SPACING;
+        y += 8;
+        searchHeaderY = y;
+        y += HEADER_HEIGHT;
         addOption(CycleButton
-                .onOffBuilder(config.showCredit)
+                .onOffBuilder(config.personalise)
                 .create(rightX, y, columnWidth, WIDGET_HEIGHT,
-                        Component.translatable("option.pinspo.show_credit"),
+                        Component.translatable("option.pinspo.personalise"),
                         (button, value) -> {
-                            config.showCredit = value;
+                            config.personalise = value;
                             config.save();
                         }));
         y += WIDGET_HEIGHT + SPACING;
-        addOption(CycleButton
-                .builder(PinGuide.Guide::label, config.guide)
-                .withValues(PinGuide.Guide.values())
-                .create(rightX, y, columnWidth, WIDGET_HEIGHT,
-                        Component.translatable("option.pinspo.guide"),
-                        (button, guide) -> {
-                            config.guide = guide;
-                            config.save();
-                        }));
-        y += WIDGET_HEIGHT + SPACING;
-        addOption(CycleButton
-                .builder(PinGuide.Guide::label, config.floorGuide)
-                .withValues(PinGuide.Guide.OFF, PinGuide.Guide.THIRDS, PinGuide.Guide.GOLDEN,
-                        PinGuide.Guide.DIAGONALS, PinGuide.Guide.CENTRE, PinGuide.Guide.QUARTERS,
-                        PinGuide.Guide.GRID)
-                .create(rightX, y, columnWidth, WIDGET_HEIGHT,
-                        Component.translatable("option.pinspo.plot_guide"),
-                        (button, guide) -> {
-                            config.floorGuide = guide;
-                            config.save();
-                            if (guide == PinGuide.Guide.OFF) {
-                                PlotGrid.reset();
-                            } else {
-                                PlotGrid.setHidden(false);
-                                PlotGrid.scan();
-                            }
-                        }));
-        y += WIDGET_HEIGHT + SPACING;
-        addOption(CycleButton
-                .onOffBuilder(config.plotVertical)
-                .create(rightX, y, columnWidth, WIDGET_HEIGHT,
-                        Component.translatable("option.pinspo.plot_vertical"),
-                        (button, value) -> {
-                            config.plotVertical = value;
-                            config.save();
-                            if (value) {
-                                PlotGrid.setHidden(false);
-                                if (!PlotGrid.hasPlot()) {
-                                    PlotGrid.scan();
-                                }
-                            }
-                        }));
-        y += WIDGET_HEIGHT + SPACING;
-        addOption(PinButton.of(rightX, y, columnWidth, WIDGET_HEIGHT,
-                heightLabel(), () -> {
-                    PlotGrid.cycleVerticalHeight();
+        PinButton forget = PinButton.of(rightX, y, columnWidth, WIDGET_HEIGHT,
+                Component.translatable(confirmForget
+                        ? "option.pinspo.forget_taste.confirm"
+                        : "option.pinspo.forget_taste"), () -> {
+                    if (confirmForget) {
+                        PinTaste.forget();
+                    }
+                    confirmForget = !confirmForget;
                     rebuild();
-                }));
-        y += WIDGET_HEIGHT + SPACING;
-        addOption(CycleButton
-                .onOffBuilder(config.blurBackdrop)
-                .create(rightX, y, columnWidth, WIDGET_HEIGHT,
-                        Component.translatable("option.pinspo.blur_backdrop"),
-                        (button, value) -> {
-                            config.blurBackdrop = value;
-                            config.save();
-                        }));
+                });
+        forget.active = confirmForget || PinTaste.hasProfile();
+        addOption(forget);
 
         contentTop = columnTop + HEADER_HEIGHT;
         contentBottom = height - FOOTER_HEIGHT - 12;
@@ -304,15 +260,6 @@ public class PinSettingsScreen extends PinTabScreen {
         PinTheme.roundedRect(guiGraphics, x, top, 4, handle, PinTheme.ACCENT);
     }
 
-    /** "Auto" for a height that follows the plot's own size, otherwise the block count. */
-    private Component heightLabel() {
-        Component value = config.plotVerticalHeight == 0
-                ? Component.translatable("option.pinspo.plot_height.auto")
-                : Component.literal(config.plotVerticalHeight + " "
-                        + Component.translatable("option.pinspo.blocks").getString());
-        return Component.translatable("option.pinspo.plot_height", value);
-    }
-
     private void rebuild() {
         clearWidgets();
         init();
@@ -329,6 +276,11 @@ public class PinSettingsScreen extends PinTabScreen {
                 Component.translatable("screen.pinspo.section.overlay"), leftX, columnTop);
         PinTheme.sectionHeader(guiGraphics, font,
                 Component.translatable("screen.pinspo.section.build_battle"), rightX, columnTop);
+        int searchY = searchHeaderY - scroll;
+        if (searchY >= columnTop && searchY + 10 <= contentBottom) {
+            PinTheme.sectionHeader(guiGraphics, font,
+                    Component.translatable("screen.pinspo.section.search"), rightX, searchY);
+        }
         renderScrollbar(guiGraphics);
     }
 
