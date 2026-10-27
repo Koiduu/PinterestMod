@@ -95,6 +95,16 @@ public final class CameraPoints {
             return;
         }
         List<Point> here = here();
+        // Hidden cameras cost nothing, so a full set makes room by dropping the oldest hidden one.
+        if (here.size() >= MAX_PER_WORLD) {
+            for (Point old : here) {
+                if (!old.visible) {
+                    remove(old);
+                    here.remove(old);
+                    break;
+                }
+            }
+        }
         if (here.size() >= MAX_PER_WORLD) {
             tell(Component.translatable("message.pinspo.camera_full", MAX_PER_WORLD));
             return;

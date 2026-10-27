@@ -9,7 +9,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.List;
 
 /**
- * Arranging camera windows: drag one to move it, drag its corner to resize it, click the cross to hide it.
+ * Arranging camera windows: drag one to move it, drag its corner to resize it, click the cross to delete it.
  * The windows themselves are the HUD's, so what the player arranges is exactly what they will see.
  */
 public class CameraLayoutScreen extends Screen {
@@ -93,7 +93,7 @@ public class CameraLayoutScreen extends Screen {
                 continue;
             }
             if (overClose(box, event.x(), event.y())) {
-                CameraPoints.toggle(point);
+                CameraPoints.remove(point);
                 return true;
             }
             if (event.button() == 1) {

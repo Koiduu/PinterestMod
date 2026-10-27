@@ -176,7 +176,7 @@
   "screen.pinspo.camera_plant_here": "Plant here",
   "screen.pinspo.camera_arrange": "Arrange windows",
   "screen.pinspo.camera_layout": "Camera windows",
-  "screen.pinspo.camera_layout_hint": "Drag to move · red corner resizes · scroll zooms · right-click resets zoom · × hides",
+  "screen.pinspo.camera_layout_hint": "Drag to move · red corner resizes · scroll zooms · right-click resets zoom · × deletes",
   "screen.pinspo.camera_layout_empty": "No cameras showing. Press %s in-game to plant one.",
   "message.pinspo.camera_planted": "%s planted. Sneak + %s to move or resize its window.",
   "message.pinspo.camera_full": "You already have %s cameras here. Delete one in the Build tab (M).",
