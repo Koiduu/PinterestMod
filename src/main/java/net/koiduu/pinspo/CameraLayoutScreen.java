@@ -94,6 +94,9 @@ public class CameraLayoutScreen extends Screen {
             }
             if (overClose(box, event.x(), event.y())) {
                 CameraPoints.remove(point);
+                if (CameraPoints.visibleHere().isEmpty()) {
+                    onClose();
+                }
                 return true;
             }
             if (event.button() == 1) {

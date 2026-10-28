@@ -21,6 +21,8 @@ public class WallEditScreen extends Screen {
     private final Screen parent;
     @Nullable
     private Component feedback;
+    /** Where the hint text starts: just under the last button, so it can never sit on top of one. */
+    private int hintTop;
 
     public WallEditScreen(@Nullable Screen parent) {
         super(Component.translatable("screen.pinspo.wall_edit"));
@@ -84,6 +86,7 @@ public class WallEditScreen extends Screen {
             WallPhotos.remove();
             onClose();
         }));
+        hintTop = y + ROW + 6;
         addRenderableWidget(PinButton.primary(x, height - 30, inner, 20, Component.translatable("gui.done"),
                 this::onClose));
     }
@@ -135,17 +138,33 @@ public class WallEditScreen extends Screen {
         PinTheme.panel(guiGraphics, 8, 8, PANEL_WIDTH, height - 16);
         PinTheme.sectionHeader(guiGraphics, font, title, 14, 16);
         super.extractRenderState(guiGraphics, mouseX, mouseY, partialTick);
-        int hintY = height - 30 - 34;
+        int textWidth = PANEL_WIDTH - 12;
+        int doneTop = height - 30;
+        int y = hintTop;
         if (feedback != null) {
-            guiGraphics.text(font, font.plainSubstrByWidth(feedback.getString(), PANEL_WIDTH - 12),
-                    14, hintY - 12, PinTheme.ACCENT, false);
+            for (var line : font.split(feedback, textWidth)) {
+                if (y + 9 > doneTop - 4) {
+                    break;
+                }
+                guiGraphics.text(font, line, 14, y, PinTheme.ACCENT, false);
+                y += 10;
+            }
+            y += 4;
         }
-        guiGraphics.text(font, Component.translatable("screen.pinspo.wall_hint_keys"), 14, hintY,
-                PinTheme.TEXT_MUTED, false);
-        guiGraphics.text(font, Component.translatable("screen.pinspo.wall_hint_scroll"), 14, hintY + 10,
-                PinTheme.TEXT_MUTED, false);
-        guiGraphics.text(font, Component.translatable("screen.pinspo.wall_hint_move",
-                PinSpoClient.WALL_KEY.getTranslatedKeyMessage()), 14, hintY + 20, PinTheme.TEXT_MUTED, false);
+        Component[] hints = {
+                Component.translatable("screen.pinspo.wall_hint_keys"),
+                Component.translatable("screen.pinspo.wall_hint_scroll"),
+                Component.translatable("screen.pinspo.wall_hint_move", PinSpoClient.WALL_KEY.getTranslatedKeyMessage())
+        };
+        for (Component hint : hints) {
+            for (var line : font.split(hint, textWidth)) {
+                if (y + 9 > doneTop - 4) {
+                    return;
+                }
+                guiGraphics.text(font, line, 14, y, PinTheme.TEXT_MUTED, false);
+                y += 10;
+            }
+        }
     }
 
     private static float sliderToSize(double value) {
