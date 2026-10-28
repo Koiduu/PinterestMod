@@ -42,6 +42,7 @@ public final class CameraRenderer {
      */
     private static CrossFrameResourcePool pool;
     private static boolean busy;
+    private static boolean cullingRelaxed;
     private static boolean broken;
     private static int cursor;
 
@@ -62,7 +63,20 @@ public final class CameraRenderer {
         }
         List<CameraPoints.Point> visible = CameraPoints.visibleHere();
         if (visible.isEmpty()) {
+            if (cullingRelaxed) {
+                client.smartCull = true;
+                cullingRelaxed = false;
+            }
             return;
+        }
+        // The chunk visibility graph is shared by every render. With occlusion culling on it is rebuilt
+        // around whichever viewpoint rendered last, so the player's view lost chunks the camera could not
+        // see (and the camera showed the player's). Without it the graph is simply "everything in range",
+        // the same for both views.
+        if (!cullingRelaxed) {
+            client.smartCull = false;
+            cullingRelaxed = true;
+            client.levelRenderer.sectionOcclusionGraph().invalidate();
         }
         CameraPoints.Point point = visible.get(Math.floorMod(cursor++, visible.size()));
         Camera camera = gameRenderer.mainCamera();

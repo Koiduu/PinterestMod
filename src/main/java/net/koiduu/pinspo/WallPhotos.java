@@ -349,7 +349,7 @@ public final class WallPhotos {
         Vec3 normal = axes[2];
         Vec3 centre = new Vec3(photo.x - camera.x, photo.y - camera.y, photo.z - camera.z);
         int colour = Math.round(photo.opacity * 255.0F) << 24 | 0xFFFFFF;
-        double limit = visibleRange(context);
+        double scale = pullIn(centre, right, up, visibleRange(context));
         int cells = Math.clamp((int) Math.ceil(Math.max(halfWidth, halfHeight) / 2.0F), 1, 32);
 
         context.submitNodeCollector().submitCustomGeometry(context.poseStack(),
@@ -360,10 +360,10 @@ public final class WallPhotos {
                         for (int row = 0; row < cells; row++) {
                             float v0 = (float) row / cells;
                             float v1 = (float) (row + 1) / cells;
-                            corner(buffer, pose, point(centre, right, up, u0, v0, limit), u0, v0, colour, normal);
-                            corner(buffer, pose, point(centre, right, up, u0, v1, limit), u0, v1, colour, normal);
-                            corner(buffer, pose, point(centre, right, up, u1, v1, limit), u1, v1, colour, normal);
-                            corner(buffer, pose, point(centre, right, up, u1, v0, limit), u1, v0, colour, normal);
+                            corner(buffer, pose, point(centre, right, up, u0, v0, scale), u0, v0, colour, normal);
+                            corner(buffer, pose, point(centre, right, up, u0, v1, scale), u0, v1, colour, normal);
+                            corner(buffer, pose, point(centre, right, up, u1, v1, scale), u1, v1, colour, normal);
+                            corner(buffer, pose, point(centre, right, up, u1, v0, scale), u1, v0, colour, normal);
                         }
                     }
                 });
@@ -382,14 +382,21 @@ public final class WallPhotos {
     }
 
     /**
-     * A point of the photo relative to the camera. Anything beyond the visible range is pulled straight
-     * towards the camera along its own line of sight: it lands on exactly the same pixel, only nearer, so a
-     * photo of any size reads at any distance while the near part keeps its true depth against the build.
+     * If any corner sits beyond the visible range, the whole photo is shrunk towards the camera by one
+     * factor. Every point keeps its exact pixel on screen and the photo stays flat, so the texture never
+     * warps or tears; up close (the usual case) the factor is 1 and the photo keeps its true depth.
      */
-    private static Vec3 point(Vec3 centre, Vec3 right, Vec3 up, float u, float v, double limit) {
-        Vec3 at = centre.add(right.scale(u * 2.0F - 1.0F)).add(up.scale(1.0F - v * 2.0F));
-        double distance = at.length();
-        return distance > limit ? at.scale(limit / distance) : at;
+    private static double pullIn(Vec3 centre, Vec3 right, Vec3 up, double limit) {
+        double farthest = 0.0D;
+        for (int corner = 0; corner < 4; corner++) {
+            Vec3 at = centre.add(right.scale(corner < 2 ? -1 : 1)).add(up.scale(corner % 2 == 0 ? -1 : 1));
+            farthest = Math.max(farthest, at.length());
+        }
+        return farthest > limit ? limit / farthest : 1.0D;
+    }
+
+    private static Vec3 point(Vec3 centre, Vec3 right, Vec3 up, float u, float v, double scale) {
+        return centre.add(right.scale(u * 2.0F - 1.0F)).add(up.scale(1.0F - v * 2.0F)).scale(scale);
     }
 
     private static void corner(VertexConsumer buffer, PoseStack.Pose pose, Vec3 at, float u, float v,
