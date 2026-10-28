@@ -1,6 +1,6 @@
 package net.koiduu.pinspo;
 
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 
@@ -84,15 +84,15 @@ public class PinFriendOptionsScreen extends Screen {
     }
 
     @Override
-    public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
-        super.render(guiGraphics, mouseX, mouseY, partialTick);
-        guiGraphics.drawCenteredString(font, title, width / 2, Math.max(20, height / 2 - 74), PinTheme.TEXT);
-        guiGraphics.drawCenteredString(font, Component.translatable("screen.pinspo.friend_options"),
+    public void extractRenderState(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTick) {
+        super.extractRenderState(guiGraphics, mouseX, mouseY, partialTick);
+        guiGraphics.centeredText(font, title, width / 2, Math.max(20, height / 2 - 74), PinTheme.TEXT);
+        guiGraphics.centeredText(font, Component.translatable("screen.pinspo.friend_options"),
                 width / 2, Math.max(32, height / 2 - 64), PinTheme.TEXT_MUTED);
     }
 
     @Override
     public void onClose() {
-        minecraft.setScreen(parent);
+        minecraft.setScreenAndShow(parent);
     }
 }

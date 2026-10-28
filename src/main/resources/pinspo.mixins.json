@@ -1,0 +1,16 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "net.koiduu.pinspo.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "client": [
+    "CameraAccessor",
+    "GameRendererAccessor",
+    "GameRendererMixin",
+    "LevelExtractorAccessor",
+    "SectionOcclusionGraphMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

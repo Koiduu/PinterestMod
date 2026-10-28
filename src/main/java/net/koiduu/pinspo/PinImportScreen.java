@@ -1,6 +1,6 @@
 package net.koiduu.pinspo;
 
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.KeyEvent;
@@ -8,10 +8,7 @@ import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.Util;
 import org.jetbrains.annotations.Nullable;
-import org.lwjgl.PointerBuffer;
-import org.lwjgl.glfw.GLFW;
-import org.lwjgl.system.MemoryStack;
-import org.lwjgl.util.tinyfd.TinyFileDialogs;
+import com.mojang.blaze3d.platform.InputConstants;
 
 import java.net.URI;
 import java.nio.file.Path;
@@ -99,7 +96,7 @@ public class PinImportScreen extends PinTabScreen {
                     : isPinPage(pastedUrl()) ? "screen.pinspo.pin_page_not_saveable" : "screen.pinspo.bad_link");
             return;
         }
-        minecraft.setScreen(new PinActionScreen(this, pin));
+        minecraft.setScreenAndShow(new PinActionScreen(this, pin));
     }
 
     private String pastedUrl() {
@@ -138,9 +135,7 @@ public class PinImportScreen extends PinTabScreen {
      */
     private void chooseFile() {
         feedback = Component.translatable("screen.pinspo.choosing_file");
-        Util.nonCriticalIoPool().execute(() -> {
-            String chosen = openDialog();
-            minecraft.execute(() -> {
+        FileChooser.open(chosen -> {
                 if (chosen == null) {
                     feedback = null;
                     return;
@@ -152,29 +147,12 @@ public class PinImportScreen extends PinTabScreen {
                 }
                 PinnedImage.pin(pin);
                 onClose();
-            });
         });
     }
 
-    @Nullable
-    private static String openDialog() {
-        try (MemoryStack stack = MemoryStack.stackPush()) {
-            PointerBuffer filters = stack.mallocPointer(5);
-            filters.put(stack.UTF8("*.png")).put(stack.UTF8("*.jpg")).put(stack.UTF8("*.jpeg"))
-                    .put(stack.UTF8("*.webp")).put(stack.UTF8("*.gif"));
-            filters.flip();
-            return TinyFileDialogs.tinyfd_openFileDialog(
-                    Component.translatable("screen.pinspo.choose_file_title").getString(),
-                    null, filters, "Images", false);
-        } catch (Exception e) {
-            PinSpoClient.LOGGER.warn("Could not open the system file chooser", e);
-            return null;
-        }
-    }
-
     @Override
-    public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
-        super.render(guiGraphics, mouseX, mouseY, partialTick);
+    public void extractRenderState(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTick) {
+        super.extractRenderState(guiGraphics, mouseX, mouseY, partialTick);
         grid.render(guiGraphics, font, mouseX, mouseY);
 
         Component hint = feedback != null
@@ -182,7 +160,7 @@ public class PinImportScreen extends PinTabScreen {
                 : Component.translatable(grid.pins().isEmpty()
                         ? "screen.pinspo.no_local_images"
                         : "screen.pinspo.local_hint");
-        guiGraphics.drawString(font, font.plainSubstrByWidth(hint.getString(), width - MARGIN * 2),
+        guiGraphics.text(font, font.plainSubstrByWidth(hint.getString(), width - MARGIN * 2),
                 MARGIN, CONTENT_TOP + 24, feedback != null ? PinTheme.ACCENT : COLOR_MUTED, false);
     }
 
@@ -195,8 +173,8 @@ public class PinImportScreen extends PinTabScreen {
         if (pin == null) {
             return false;
         }
-        if (event.button() == GLFW.GLFW_MOUSE_BUTTON_RIGHT) {
-            minecraft.setScreen(new PinActionScreen(this, pin));
+        if (event.button() == InputConstants.MOUSE_BUTTON_RIGHT) {
+            minecraft.setScreenAndShow(new PinActionScreen(this, pin));
             return true;
         }
         PinnedImage.pin(pin);

@@ -1,6 +1,6 @@
 package net.koiduu.pinspo;
 
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.renderer.RenderPipelines;
@@ -190,30 +190,30 @@ public class PinActionScreen extends Screen {
     }
 
     @Override
-    public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
-        renderTransparentBackground(guiGraphics);
+    public void extractRenderState(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTick) {
+        extractTransparentBackground(guiGraphics);
         int x = (width - PANEL_WIDTH) / 2;
         PinTheme.panel(guiGraphics, x - 10, panelTop, PANEL_WIDTH + 20, panelHeight);
-        super.render(guiGraphics, mouseX, mouseY, partialTick);
+        super.extractRenderState(guiGraphics, mouseX, mouseY, partialTick);
 
-        guiGraphics.drawString(font, title, x, panelTop + 6, PinTheme.ACCENT, false);
+        guiGraphics.text(font, title, x, panelTop + 6, PinTheme.ACCENT, false);
         renderPreview(guiGraphics, x, panelTop + 18);
 
         if (rows().isEmpty()) {
-            guiGraphics.drawString(font,
+            guiGraphics.text(font,
                     Component.translatable(mode == Mode.SEND
                             ? "screen.pinspo.no_friends_yet"
                             : "screen.pinspo.no_folders_yet"),
                     x, listTop + 6, PinTheme.TEXT_MUTED, false);
         }
         if (feedback != null) {
-            guiGraphics.drawString(font, feedback, x, panelTop + panelHeight - 10,
+            guiGraphics.text(font, feedback, x, panelTop + panelHeight - 10,
                     PinTheme.TEXT_MUTED, false);
         }
     }
 
     /** The reference itself, so it is obvious which pin is being sent or saved. */
-    private void renderPreview(GuiGraphics guiGraphics, int x, int y) {
+    private void renderPreview(GuiGraphicsExtractor guiGraphics, int x, int y) {
         ThumbnailCache.Thumbnail thumbnail = ThumbnailCache.get(pin.thumbnailUrl());
         PinTheme.card(guiGraphics, x, y, PREVIEW, PREVIEW, false);
         if (thumbnail != null) {
@@ -240,9 +240,9 @@ public class PinActionScreen extends Screen {
         String label = pin.title().isBlank()
                 ? Component.translatable("screen.pinspo.reference").getString()
                 : pin.title();
-        guiGraphics.drawString(font, font.plainSubstrByWidth(label, PANEL_WIDTH - PREVIEW - 8),
+        guiGraphics.text(font, font.plainSubstrByWidth(label, PANEL_WIDTH - PREVIEW - 8),
                 x + PREVIEW + 8, y + 4, PinTheme.TEXT, false);
-        guiGraphics.drawString(font,
+        guiGraphics.text(font,
                 font.plainSubstrByWidth(
                         Component.translatable("screen.pinspo.pin_actions_hint").getString(),
                         PANEL_WIDTH - PREVIEW - 8),
@@ -251,6 +251,6 @@ public class PinActionScreen extends Screen {
 
     @Override
     public void onClose() {
-        minecraft.setScreen(parent);
+        minecraft.setScreenAndShow(parent);
     }
 }
