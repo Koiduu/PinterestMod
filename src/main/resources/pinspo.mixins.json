@@ -6,7 +6,9 @@
   "client": [
     "CameraAccessor",
     "GameRendererAccessor",
-    "GameRendererMixin"
+    "GameRendererMixin",
+    "LevelExtractorAccessor",
+    "SectionOcclusionGraphMixin"
   ],
   "injectors": {
     "defaultRequire": 1
