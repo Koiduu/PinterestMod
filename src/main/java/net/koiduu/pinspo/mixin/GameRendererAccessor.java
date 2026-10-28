@@ -28,4 +28,7 @@ public interface GameRendererAccessor {
 
     @Accessor("globalSettingsUniform")
     net.minecraft.client.renderer.GlobalSettingsUniform pinspo$globalSettingsUniform();
+
+    @Accessor("fogRenderer")
+    net.minecraft.client.renderer.fog.FogRenderer pinspo$fogRenderer();
 }
