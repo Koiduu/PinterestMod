@@ -124,6 +124,12 @@ public final class CameraRenderer {
             client.levelExtractor.extract(deltaTracker, camera, partialTick);
             updateGlobals(gameRenderer, rendererAccess, target.width, target.height);
 
+            // Fog and cloud uniforms live in per-frame ring buffers. Without moving to a fresh slot, the camera
+            // pass overwrote the slot the player's frame had just drawn with, so the main view's clouds vanished
+            // and its sky fog broke into a hard line.
+            rendererAccess.pinspo$fogRenderer().endFrame();
+            client.levelRenderer.cloudRenderer().endFrame();
+
             if (pool == null) {
                 pool = new CrossFrameResourcePool(3);
             }
