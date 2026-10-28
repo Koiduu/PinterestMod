@@ -25,4 +25,7 @@ public interface GameRendererAccessor {
 
     @Invoker("extractCamera")
     void pinspo$extractCamera(DeltaTracker deltaTracker, float partialTick);
+
+    @Accessor("globalSettingsUniform")
+    net.minecraft.client.renderer.GlobalSettingsUniform pinspo$globalSettingsUniform();
 }
