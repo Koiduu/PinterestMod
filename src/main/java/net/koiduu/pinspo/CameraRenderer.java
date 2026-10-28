@@ -22,6 +22,9 @@ import org.joml.Vector4f;
 
 import java.util.IdentityHashMap;
 import java.util.ArrayList;
+import net.minecraft.client.TextureFilteringMethod;
+import net.minecraft.client.renderer.state.GameRenderState;
+import net.minecraft.client.renderer.state.level.LevelRenderState;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -119,6 +122,7 @@ public final class CameraRenderer {
             rendererAccess.pinspo$extractCamera(deltaTracker, partialTick);
             extractorAccess.pinspo$setPrevCamRotX(Double.NaN);
             client.levelExtractor.extract(deltaTracker, camera, partialTick);
+            updateGlobals(gameRenderer, rendererAccess, target.width, target.height);
 
             if (pool == null) {
                 pool = new CrossFrameResourcePool(3);
@@ -154,10 +158,26 @@ public final class CameraRenderer {
             refreshFrustum(camera, cameraAccess);
             try {
                 rendererAccess.pinspo$extractCamera(deltaTracker, partialTick);
+                updateGlobals(gameRenderer, rendererAccess,
+                        client.getWindow().getWidth(), client.getWindow().getHeight());
             } catch (Throwable ignored) {
             }
             busy = false;
         }
+    }
+
+    /**
+     * The terrain shader offsets every chunk by the camera position in the global uniforms, which the game
+     * writes once per frame before the level render. Without rewriting it, chunks were drawn from the
+     * player's position while entities used the camera's, so the view seemed to follow the player.
+     */
+    private static void updateGlobals(GameRenderer gameRenderer, GameRendererAccessor access, int width, int height) {
+        GameRenderState state = gameRenderer.gameRenderState();
+        LevelRenderState level = state.levelRenderState;
+        access.pinspo$globalSettingsUniform().update(width, height, state.optionsRenderState.glintStrength,
+                level.gameTime, level.worldPartialTicks, state.optionsRenderState.menuBackgroundBlurriness,
+                level.cameraRenderState.pos,
+                state.optionsRenderState.textureFiltering == TextureFilteringMethod.RGSS);
     }
 
     /** Same projection the game sets up each frame, just with the camera's own field of view. */
