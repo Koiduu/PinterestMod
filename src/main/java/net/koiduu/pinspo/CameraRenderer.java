@@ -6,6 +6,8 @@ import com.mojang.blaze3d.pipeline.TextureTarget;
 import com.mojang.blaze3d.resource.CrossFrameResourcePool;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.renderpearl.api.textures.FilterMode;
+import net.koiduu.pinspo.mixin.LevelExtractorAccessor;
+import net.minecraft.client.renderer.chunk.SectionRenderDispatcher;
 import net.koiduu.pinspo.mixin.CameraAccessor;
 import net.koiduu.pinspo.mixin.GameRendererAccessor;
 import net.minecraft.client.Camera;
@@ -19,6 +21,7 @@ import org.joml.Matrix4f;
 import org.joml.Vector4f;
 
 import java.util.IdentityHashMap;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -97,6 +100,14 @@ public final class CameraRenderer {
         float partialTick = deltaTracker.getGameTimeDeltaPartialTick(false);
 
         CrossFrameResourcePool gamePool = rendererAccess.pinspo$resourcePool();
+        // The camera pass refills the renderer's visible-section lists for its own frustum. They're put back
+        // afterwards; otherwise the player's next frame can reuse them (it only refilters when its own
+        // rotation changes) and draws only what the camera sees.
+        LevelExtractorAccessor extractorAccess = (LevelExtractorAccessor) client.levelExtractor;
+        double prevRotX = extractorAccess.pinspo$prevCamRotX();
+        double prevRotY = extractorAccess.pinspo$prevCamRotY();
+        List<SectionRenderDispatcher.RenderSection> playerSections = new ArrayList<>(client.levelRenderer.visibleSections());
+        List<SectionRenderDispatcher.RenderSection> playerNearby = new ArrayList<>(client.levelRenderer.nearbyVisibleSections());
         busy = true;
         try {
             cameraAccess.pinspo$setPosition(point.position());
@@ -106,6 +117,7 @@ public final class CameraRenderer {
             setFov(cameraAccess, viewFov);
             refreshFrustum(camera, cameraAccess);
             rendererAccess.pinspo$extractCamera(deltaTracker, partialTick);
+            extractorAccess.pinspo$setPrevCamRotX(Double.NaN);
             client.levelExtractor.extract(deltaTracker, camera, partialTick);
 
             if (pool == null) {
@@ -126,6 +138,12 @@ public final class CameraRenderer {
         } finally {
             rendererAccess.pinspo$setMainRenderTarget(main);
             rendererAccess.pinspo$setResourcePool(gamePool);
+            client.levelRenderer.visibleSections().clear();
+            client.levelRenderer.visibleSections().addAll(playerSections);
+            client.levelRenderer.nearbyVisibleSections().clear();
+            client.levelRenderer.nearbyVisibleSections().addAll(playerNearby);
+            extractorAccess.pinspo$setPrevCamRotX(prevRotX);
+            extractorAccess.pinspo$setPrevCamRotY(prevRotY);
             if (pool != null) {
                 pool.endFrame();
             }
