@@ -3,7 +3,7 @@
   "id": "pinspo",
   "version": "${version}",
   "name": "PinSpo",
-  "description": "In-game Pinterest reference overlay: search Pinterest inside Minecraft and pin any image as a picture-in-picture build reference.",
+  "description": "In-game Pinterest references for builders: pin images on screen or onto a wall, plant live camera views, and match any pixel to the closest block.",
   "authors": [
     "Koiduu"
   ],
@@ -22,5 +22,8 @@
     "minecraft": "${minecraft_dependency}",
     "fabricloader": ">=${loader_version}",
     "fabric-api": "*"
-  }
+  },
+  "mixins": [
+    "pinspo.mixins.json"
+  ]
 }

@@ -90,6 +90,19 @@ public final class PinShare {
         return code.toString();
     }
 
+    /** Just the image part of a chat code ({@code "j 1a2b3c4d ..."}), or {@code ""} when it cannot travel. */
+    public static String chatImage(String imageUrl) {
+        String code = encodeChat(new PinterestApi.Pin("", "", imageUrl, imageUrl, 0, 0));
+        return code.isEmpty() ? "" : code.substring(CHAT_PREFIX.length());
+    }
+
+    /** Reverses {@link #chatImage}: the extension letter and the space-separated hash groups. */
+    @Nullable
+    public static PinterestApi.Pin fromChatImage(String letter, String groups) {
+        String extension = extensionFor(letter);
+        return extension == null ? null : toPin(groups.replace(" ", ""), extension);
+    }
+
     /** The reference in a chat-form code, or {@code null} when the message does not hold one. */
     @Nullable
     private static Shared decodeChat(String text) {

@@ -1,6 +1,6 @@
 package net.koiduu.pinspo;
 
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 
@@ -48,23 +48,23 @@ public class PinBlockedScreen extends Screen {
     }
 
     @Override
-    public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
-        super.render(guiGraphics, mouseX, mouseY, partialTick);
+    public void extractRenderState(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTick) {
+        super.extractRenderState(guiGraphics, mouseX, mouseY, partialTick);
         int x = (width - WIDGET_WIDTH) / 2;
         int y = Math.max(40, height / 2 - Math.min(blocked.size(), MAX_SHOWN) * 11 - 20);
-        guiGraphics.drawCenteredString(font, title, width / 2, Math.max(20, y - 20), PinTheme.TEXT);
+        guiGraphics.centeredText(font, title, width / 2, Math.max(20, y - 20), PinTheme.TEXT);
         if (blocked.isEmpty()) {
-            guiGraphics.drawCenteredString(font, Component.translatable("screen.pinspo.no_blocked"),
+            guiGraphics.centeredText(font, Component.translatable("screen.pinspo.no_blocked"),
                     width / 2, y, PinTheme.TEXT_MUTED);
             return;
         }
         for (String name : blocked.subList(0, Math.min(blocked.size(), MAX_SHOWN))) {
-            guiGraphics.drawString(font, font.plainSubstrByWidth(name, WIDGET_WIDTH - UNBLOCK_WIDTH - 8),
+            guiGraphics.text(font, font.plainSubstrByWidth(name, WIDGET_WIDTH - UNBLOCK_WIDTH - 8),
                     x + 2, y + 6, PinTheme.TEXT, false);
             y += 22;
         }
         if (blocked.size() > MAX_SHOWN) {
-            guiGraphics.drawString(font,
+            guiGraphics.text(font,
                     Component.translatable("screen.pinspo.more_blocked", blocked.size() - MAX_SHOWN),
                     x + 2, y + 2, PinTheme.TEXT_MUTED, false);
         }
@@ -72,6 +72,6 @@ public class PinBlockedScreen extends Screen {
 
     @Override
     public void onClose() {
-        minecraft.setScreen(parent);
+        minecraft.setScreenAndShow(parent);
     }
 }

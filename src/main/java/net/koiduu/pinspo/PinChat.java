@@ -99,6 +99,11 @@ public final class PinChat {
         return true;
     }
 
+    /** Sends a wall-photo update; it never lands in the chat history, only on the friend's wall. */
+    public static boolean sendWall(String friend, String message) {
+        return send(friend, message);
+    }
+
     private static boolean send(String friend, String message) {
         // The name is checked against Minecraft's own name shape so it cannot extend the command.
         if (!PinSecurity.isPlayerName(friend) || message.length() > MAX_MESSAGE_LENGTH) {
@@ -146,6 +151,12 @@ public final class PinChat {
             default -> {
             }
         }
+        if (WallPhotos.isWallMessage(text)) {
+            if (PinFriends.isFriend(incoming.sender())) {
+                WallPhotos.onFriendMessage(incoming.sender(), text);
+            }
+            return;
+        }
         PinShare.Shared shared = PinShare.decode(text);
         if (shared == null) {
             // Plain text only counts as a PinSpo message once that player is a friend.
@@ -191,7 +202,7 @@ public final class PinChat {
         }
         return switch (text) {
             case REQUEST, ACCEPT, DECLINE, OLD_REQUEST, OLD_ACCEPT, OLD_DECLINE -> true;
-            default -> PinShare.looksLikeCode(text);
+            default -> PinShare.looksLikeCode(text) || WallPhotos.isWallMessage(text);
         };
     }
 

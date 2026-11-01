@@ -41,7 +41,6 @@ public final class BuildBattleMode {
         if (VOTING.matcher(text).find()) {
             currentTheme = null;
             PinnedImage.setHidden(true);
-            PlotGrid.setHidden(true);
             return;
         }
         Matcher matcher = THEME.matcher(text);
@@ -56,8 +55,6 @@ public final class BuildBattleMode {
         PinnedImage.setHidden(false);
         // A new round means a new plot, so the old bounds are dropped and the next tick that finds the
         // player standing on a floor measures the new one.
-        PlotGrid.setHidden(false);
-        PlotGrid.reset();
         onThemeChosen(theme);
     }
 
@@ -67,8 +64,8 @@ public final class BuildBattleMode {
             pinRandom(theme);
             return;
         }
-        if (client.screen == null) {
-            client.setScreen(new PinBrowseScreen(null, theme));
+        if (client.gui.screen() == null) {
+            client.setScreenAndShow(new PinBrowseScreen(null, theme));
         }
     }
 
@@ -91,13 +88,12 @@ public final class BuildBattleMode {
     /** Resets the round state, e.g. when leaving a server. */
     public static void reset() {
         currentTheme = null;
-        PlotGrid.reset();
     }
 
     private static void notifyPlayer(Component message) {
         Minecraft client = Minecraft.getInstance();
         if (client.player != null) {
-            client.player.displayClientMessage(message, true);
+            client.player.sendOverlayMessage(message);
         }
     }
 }

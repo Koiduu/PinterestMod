@@ -4,7 +4,7 @@ import com.mojang.blaze3d.platform.NativeImage;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.network.chat.Component;
@@ -67,6 +67,10 @@ public final class PinnedImage {
         return texture != null;
     }
 
+    public static String currentUrl() {
+        return isPinned() ? PinSpoConfig.get().pinnedUrl : "";
+    }
+
     public static boolean isDownloading() {
         return downloading;
     }
@@ -127,10 +131,26 @@ public final class PinnedImage {
 
     @Nullable
     private static NativeImage download(String url) {
+        NativeImage image = loadFullImage(url);
+        return image == null ? null : downscale(image);
+    }
+
+    /** Downscaled to overlay size, for anything that only needs to show the image. Call off-thread. */
+    @Nullable
+    public static NativeImage loadImage(String url) {
+        return download(url);
+    }
+
+    /**
+     * Every original pixel, for the colour picker. Blocking (network or disk), so call it off-thread; the
+     * caller owns and must close the image.
+     */
+    @Nullable
+    public static NativeImage loadFullImage(String url) {
         if (LocalImages.isLocalUrl(url)) {
             byte[] local = LocalImages.read(url);
             try {
-                return local == null ? null : downscale(ImageDecoder.decode(local));
+                return local == null ? null : ImageDecoder.decode(local);
             } catch (IOException e) {
                 PinSpoClient.LOGGER.warn("Could not decode local image {}", url, e);
                 return null;
@@ -143,7 +163,7 @@ public final class PinnedImage {
         Path cacheFile = CACHE_DIR.resolve(cacheName(url));
         if (Files.isRegularFile(cacheFile)) {
             try {
-                return downscale(ImageDecoder.decode(Files.readAllBytes(cacheFile)));
+                return ImageDecoder.decode(Files.readAllBytes(cacheFile));
             } catch (Exception e) {
                 PinSpoClient.LOGGER.warn("Discarding unreadable cached image {}", cacheFile, e);
                 try {
@@ -180,7 +200,7 @@ public final class PinnedImage {
             PinSpoClient.LOGGER.warn("Could not cache pinned image", e);
         }
         try {
-            return downscale(ImageDecoder.decode(bytes));
+            return ImageDecoder.decode(bytes);
         } catch (IOException e) {
             PinSpoClient.LOGGER.warn("Could not decode image {}", imageUrl, e);
             return null;
@@ -396,7 +416,7 @@ public final class PinnedImage {
         }
     }
 
-    public static void render(GuiGraphics guiGraphics) {
+    public static void render(GuiGraphicsExtractor guiGraphics) {
         if (hidden || texture == null || imageWidth <= 0 || imageHeight <= 0) {
             return;
         }
@@ -438,11 +458,10 @@ public final class PinnedImage {
                 height,
                 alpha << 24 | 0xFFFFFF
         );
-        PinGuide.render(guiGraphics, config.guide, x, y, width, height, alpha);
     }
 
     /** Blurred copy of the reference, drawn oversized behind it. */
-    private static void renderBackdrop(GuiGraphics guiGraphics, PinSpoConfig config,
+    private static void renderBackdrop(GuiGraphicsExtractor guiGraphics, PinSpoConfig config,
                                       int x, int y, int width, int height, int alpha) {
         if (!config.blurBackdrop || blurTexture == null) {
             return;
@@ -465,16 +484,8 @@ public final class PinnedImage {
         );
     }
 
-    /** Steps to the next composition guide and returns the one now in use. */
-    public static PinGuide.Guide cycleGuide() {
-        PinSpoConfig config = PinSpoConfig.get();
-        config.guide = config.guide.next();
-        config.save();
-        return config.guide;
-    }
-
     /** Half-scale attribution tucked under the overlay, fading with the overlay's own opacity. */
-    private static void renderCredit(GuiGraphics guiGraphics, PinSpoConfig config,
+    private static void renderCredit(GuiGraphicsExtractor guiGraphics, PinSpoConfig config,
                                     int x, int y, int width, int alpha) {
         if (!config.showCredit || config.pinnedCredit.isEmpty()) {
             return;
@@ -482,7 +493,7 @@ public final class PinnedImage {
         Font font = Minecraft.getInstance().font;
         guiGraphics.pose().pushMatrix();
         guiGraphics.pose().scale(0.5F, 0.5F);
-        guiGraphics.drawString(font, font.plainSubstrByWidth(config.pinnedCredit, width * 2),
+        guiGraphics.text(font, font.plainSubstrByWidth(config.pinnedCredit, width * 2),
                 x * 2, (y + 1) * 2, alpha << 24 | (PinTheme.TEXT_MUTED & 0xFFFFFF), false);
         guiGraphics.pose().popMatrix();
     }
@@ -491,7 +502,7 @@ public final class PinnedImage {
         Minecraft client = Minecraft.getInstance();
         client.execute(() -> {
             if (client.player != null) {
-                client.player.displayClientMessage(Component.translatable(translationKey), false);
+                client.player.sendSystemMessage(Component.translatable(translationKey));
             }
         });
     }
