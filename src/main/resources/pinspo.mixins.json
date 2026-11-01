@@ -8,7 +8,11 @@
     "GameRendererAccessor",
     "GameRendererMixin",
     "LevelExtractorAccessor",
-    "SectionOcclusionGraphMixin"
+    "SectionOcclusionGraphMixin",
+    "LevelRendererMixin",
+    "SectionUpdateTrackerMixin",
+    "SkyRendererAccessor",
+    "SkyRendererMixin"
   ],
   "injectors": {
     "defaultRequire": 1
