@@ -370,15 +370,16 @@ public final class WallPhotos {
     }
 
     /**
-     * How far from the camera geometry can sit before fog fades it or the far plane slices it off — the
-     * cause of photos vanishing in the distance or ending in a hard edge.
+     * Where the render-distance fog starts. A photo pulled in to this distance can only cover blocks that
+     * are already lost in that fog. Weather and biome fog are left out on purpose: rain or a server's
+     * custom fog can bring them within a few blocks, which pulled photos in front of the build itself.
      */
     private static double visibleRange(LevelRenderContext context) {
         FogData fog = context.levelState().cameraRenderState.fogData;
         if (fog == null) {
             return Double.MAX_VALUE;
         }
-        return 0.85D * Math.max(8.0D, Math.min(fog.renderDistanceStart, fog.environmentalStart));
+        return Math.max(32.0D, 0.9D * fog.renderDistanceStart);
     }
 
     /**
