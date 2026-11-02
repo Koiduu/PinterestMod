@@ -4,45 +4,69 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>PinSpo by Koidu — references inside Minecraft</title>
+<meta property="og:image" content="https://koiduu.github.io/PinterestMod/img/hero-still.png">
 <meta name="description" content="PinSpo is a client-side Fabric mod that brings reference images into Minecraft: search, pin to your screen or a wall, and plant live camera views of your build.">
 <link rel="icon" href="img/koi.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
 <header class="nav">
-  <a class="brand" href="#top"><img src="img/koi.png" alt="" width="28" height="28">PinSpo</a>
+  <a class="brand" href="#top">PinSpo<sup>°</sup></a>
   <nav>
     <a href="#features">Features</a>
     <a href="#install">Install</a>
     <a href="#keys">Keys</a>
     <a href="#faq">FAQ</a>
   </nav>
-  <a class="btn small" href="https://github.com/Koiduu/PinterestMod/releases/latest">Download</a>
+  <a class="btn dark small" href="https://github.com/Koiduu/PinterestMod/releases/latest">Download <span aria-hidden="true">↗</span></a>
 </header>
 
 <main id="top">
   <section class="hero">
-    <div class="hero-text">
-      <p class="eyebrow"><span class="dot"></span>Fabric mod · Minecraft 26.3 · client-side</p>
-      <h1>Your reference board,<br><em>inside</em> the build.</h1>
-      <p class="lede">PinSpo puts your inspiration where you're building. Search for images without alt-tabbing, pin one to your screen or stick it on a wall, and plant cameras so you can watch every side of your build at once.</p>
-      <div class="cta">
-        <a class="btn" href="https://github.com/Koiduu/PinterestMod/releases/latest">Download for 26.3</a>
-        <a class="btn ghost" href="#install">How to install</a>
-      </div>
-      <p class="sig">by <span>Koidu</span></p>
+    <h1>Your references,<br><em>right in the build.</em></h1>
+    <p class="lede">PinSpo brings your inspiration into Minecraft: search for images, pin them on screen or on a wall, and watch every side of your build at once.</p>
+    <div class="cta">
+      <a class="btn dark" href="https://github.com/Koiduu/PinterestMod/releases/latest">Download for 26.3 <span aria-hidden="true">→</span></a>
+      <a class="btn line" href="#features"><span class="play" aria-hidden="true"></span>See what it does</a>
     </div>
-    <figure class="hero-shot">
-      <img src="img/cameras.jpg" alt="Two live PinSpo camera windows in the top-left of a Minecraft screen" width="1400" height="946">
-      <figcaption>Two planted cameras, live, while you keep building.</figcaption>
-    </figure>
+
+    <div id="stage" class="stage" data-model="default">
+      <canvas aria-label="Steve looking up, with PinSpo windows circling his head"></canvas>
+      <img class="still" src="img/hero-still.png" alt="Steve looking up, with PinSpo windows circling his head" width="1200" height="760">
+    </div>
+
+    <aside class="float left">
+      <span class="tile" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="M10 2.5a5 5 0 0 0-1.6 9.74L7.5 17.5l2.5-1.6 2.5 1.6-.9-5.26A5 5 0 0 0 10 2.5Z" fill="currentColor"/></svg></span>
+      <b>Pin it, then build it.</b>
+      <span>Your reference stays on screen while you place blocks.</span>
+    </aside>
+    <aside class="float right">
+      <span class="tile red" aria-hidden="true"><svg viewBox="0 0 20 20"><rect x="2.5" y="5" width="11" height="10" rx="2" fill="currentColor"/><path d="M14.5 8.5 18 6.5v7l-3.5-2z" fill="currentColor"/></svg></span>
+      <b>Two sides, one account.</b>
+      <span>Plant up to four live cameras around your plot.</span>
+    </aside>
+    <svg class="wires" viewBox="0 0 1200 600" preserveAspectRatio="none" aria-hidden="true">
+      <path d="M190 210 C 200 380, 330 430, 470 450"/>
+      <path d="M1010 260 C 1000 400, 900 450, 760 470"/>
+    </svg>
+
+    <div class="badge" aria-hidden="true">
+      <svg viewBox="0 0 120 120">
+        <defs><path id="circle" d="M60 60 m-44 0 a44 44 0 1 1 88 0 a44 44 0 1 1 -88 0"/></defs>
+        <text><textPath href="#circle">PINSPO · BY KOIDU · FOR BUILDERS ·</textPath></text>
+      </svg>
+      <img src="img/koi.png" alt="" width="30" height="30">
+    </div>
+
+    <p class="corner left"><span class="rule"></span>Free and open source.<br>Fabric · Minecraft 26.3</p>
+    <p class="corner right"><span class="star" aria-hidden="true">✦</span><span class="rule"></span>Less alt-tab.<br>More building.</p>
   </section>
 
-  <section class="why">
+<section class="why">
     <p>Before PinSpo, checking two sides of a build meant a second account. Now it's one keypress.</p>
   </section>
 
@@ -133,5 +157,6 @@
   <div class="fine">Unofficial. Not affiliated with Pinterest, Mojang or Microsoft. <a href="https://github.com/Koiduu/PinterestMod">Source on GitHub</a> · MIT</div>
 </footer>
 
+<script type="module" src="js/hero.js"></script>
 </body>
 </html>
