@@ -126,7 +126,7 @@ public class PinImportScreen extends PinTabScreen {
     }
 
     private static boolean isPinPage(String url) {
-        return url.startsWith("https://www.pinterest.com/pin/") || url.startsWith("https://pin.it/");
+        return url.matches("https://([a-z]{2,3}\\.|www\\.)?pinterest\\.[a-z.]+/pin/.*") || url.startsWith("https://pin.it/");
     }
 
     /**

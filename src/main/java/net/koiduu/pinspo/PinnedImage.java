@@ -39,6 +39,9 @@ public final class PinnedImage {
     /** The blurred copy is tiny on purpose: it is only ever drawn as a soft halo behind the image. */
     private static final int BLUR_SIZE = 48;
     private static final int BLUR_PASSES = 2;
+    private static final Pattern OG_IMAGE = Pattern.compile("<meta[^>]*content=\"([^\"]+)\"[^>]*property=\"og:image\"");
+    private static final Pattern IMAGE_HASH = Pattern.compile("/([0-9a-f]{32})\\.");
+    private static final Pattern IMAGE_SIGNATURE = Pattern.compile("\"image_signature\":\"([0-9a-f]{32})\"");
     private static final Pattern SIZE_FOLDER = Pattern.compile("/\\d+x\\d*/");
     private static final Pattern PINIMG_URL = Pattern.compile("https://i\\.pinimg\\.com/[^\"'\\s\\\\]+\\.(?:jpg|jpeg|png|webp|gif)");
     private static final Path CACHE_DIR = FabricLoader.getInstance().getConfigDir().resolve("pinspo/images");
@@ -160,7 +163,7 @@ public final class PinnedImage {
             PinSpoClient.LOGGER.warn("Refusing to pin an address that is not an allowed image or a Pinterest pin page");
             return null;
         }
-        Path cacheFile = CACHE_DIR.resolve(cacheName(url));
+        Path cacheFile = CACHE_DIR.resolve(cacheName("v2|" + url));
         if (Files.isRegularFile(cacheFile)) {
             try {
                 return ImageDecoder.decode(Files.readAllBytes(cacheFile));
@@ -242,7 +245,10 @@ public final class PinnedImage {
         }
     }
 
-    /** Falls back to scraping the pin page for the highest-resolution {@code i.pinimg.com} URL it lists. */
+    /**
+     * Scrapes the pin page for its own image. Pin pages also list avatars, related pins and UI artwork (one is a
+     * pink/orange gradient under {@code /originals/}), so only URLs carrying the pin's image hash are considered.
+     */
     @Nullable
     private static String scrapeImageUrl(String pageUrl) {
         byte[] page = fetch(pageUrl);
@@ -250,18 +256,42 @@ public final class PinnedImage {
             return null;
         }
         String html = new String(page, StandardCharsets.UTF_8);
+        String signature = pinSignature(html);
+        if (signature == null) {
+            PinSpoClient.LOGGER.warn("Pin page {} has no og:image or image_signature; guessing its image", pageUrl);
+        }
         String best = null;
         int bestSize = -1;
         Matcher matcher = PINIMG_URL.matcher(html);
         while (matcher.find()) {
             String candidate = matcher.group();
+            if (signature != null && !candidate.contains(signature)) {
+                continue;
+            }
             int size = candidate.contains("/originals/") ? Integer.MAX_VALUE : sizeOf(candidate);
+            if (signature == null && size == Integer.MAX_VALUE) {
+                continue;
+            }
             if (size > bestSize) {
                 bestSize = size;
                 best = candidate;
             }
         }
+        PinSpoClient.LOGGER.info("Pin page {} -> {} (signature {})", pageUrl, best, signature);
         return best;
+    }
+
+    @Nullable
+    private static String pinSignature(String html) {
+        Matcher og = OG_IMAGE.matcher(html);
+        if (og.find()) {
+            Matcher hash = IMAGE_HASH.matcher(og.group(1));
+            if (hash.find()) {
+                return hash.group(1);
+            }
+        }
+        Matcher signature = IMAGE_SIGNATURE.matcher(html);
+        return signature.find() ? signature.group(1) : null;
     }
 
     private static int sizeOf(String url) {
