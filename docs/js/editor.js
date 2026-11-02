@@ -4,7 +4,7 @@
 import { renderVideo } from "./site.js";
 
 const TEXT = "h1, h2, h3, p, li, summary, td, figcaption, .float b, .float span:not(.tile), .btn, .nav nav a, .brand";
-const REPEAT = ".row, .steps li, .keys tr, .faq details, .shot";
+const REPEAT = ".grid article, .install li, .keys tr, .faq details, .shot";
 const SKIP = "[data-editor-ui], .stage, script";
 const store = {
   get: (k, d = "") => localStorage.getItem("pinspo-editor-" + k) ?? d,
