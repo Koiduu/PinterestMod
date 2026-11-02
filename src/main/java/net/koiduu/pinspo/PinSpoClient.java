@@ -62,25 +62,29 @@ public class PinSpoClient implements ClientModInitializer {
         KeyMappingHelper.registerKeyMapping(OPEN_KEY);
         KeyMappingHelper.registerKeyMapping(WALL_KEY);
         KeyMappingHelper.registerKeyMapping(CAMERA_KEY);
-        KeyMappingHelper.registerKeyMapping(BUILD_KEY);
+        if (BuildTools.ENABLED) {
+            KeyMappingHelper.registerKeyMapping(BUILD_KEY);
+            LevelRenderEvents.AFTER_TRANSLUCENT_TERRAIN.register(BuildTools::render);
+            ClientTickEvents.START_CLIENT_TICK.register(BuildTools::onStartTick);
+            ClientTickEvents.END_CLIENT_TICK.register(BuildTools::onEndTick);
+        }
 
         LevelRenderEvents.AFTER_TRANSLUCENT_TERRAIN.register(WallPhotos::render);
-        LevelRenderEvents.AFTER_TRANSLUCENT_TERRAIN.register(BuildTools::render);
 
         HudElementRegistry.attachElementAfter(
                 VanillaHudElements.MISC_OVERLAYS,
                 Identifier.fromNamespaceAndPath(MOD_ID, "pinned_image"),
                 (guiGraphics, deltaTracker) -> {
                     CameraPoints.render(guiGraphics);
-                    BuildTools.renderHud(guiGraphics);
+                    if (BuildTools.ENABLED) {
+                        BuildTools.renderHud(guiGraphics);
+                    }
                     PinnedImage.render(guiGraphics);
                     PinNotifications.render(guiGraphics, guiGraphics.guiWidth());
                 }
         );
 
-        ClientTickEvents.START_CLIENT_TICK.register(BuildTools::onStartTick);
         ClientTickEvents.END_CLIENT_TICK.register(PinSpoClient::onEndTick);
-        ClientTickEvents.END_CLIENT_TICK.register(BuildTools::onEndTick);
         PinnedImage.restore();
 
         // Hypixel announces themes as system messages, but relayed player chat arrives on CHAT. Both are

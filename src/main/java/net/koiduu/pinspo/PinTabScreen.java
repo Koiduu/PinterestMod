@@ -43,9 +43,9 @@ public abstract class PinTabScreen extends Screen {
     protected void addTabs() {
         int labelWidth = MARGIN + LOGO_SIZE + 46;
         int tabWidth = Math.max(46,
-                Math.min(88, (width - labelWidth - MARGIN) / Tab.values().length - 2));
+                Math.min(88, (width - labelWidth - MARGIN) / visibleTabs().size() - 2));
         int x = labelWidth;
-        for (Tab value : Tab.values()) {
+        for (Tab value : visibleTabs()) {
             PinButton button = new PinButton(x, 6, tabWidth, TAB_HEIGHT, tabLabel(value),
                     PinButton.Style.TAB, () -> open(value));
             button.selected(value == tab());
@@ -54,6 +54,12 @@ public abstract class PinTabScreen extends Screen {
         }
         addRenderableWidget(PinButton.primary(width - MARGIN - 80, height - FOOTER_HEIGHT + 6, 80, 20,
                 Component.translatable("gui.done"), this::onClose));
+    }
+
+    private static java.util.List<Tab> visibleTabs() {
+        return java.util.Arrays.stream(Tab.values())
+                .filter(value -> value != Tab.TOOLS || net.koiduu.pinspo.build.BuildTools.ENABLED)
+                .toList();
     }
 
     /** The Friends tab carries the number of requests waiting, so a new one is visible from any tab. */

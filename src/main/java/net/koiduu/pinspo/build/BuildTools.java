@@ -43,6 +43,9 @@ import java.util.Map;
  */
 public final class BuildTools {
 
+    /** Build tools are parked for now: their code stays, but no key, tab, tick or render hook is registered. */
+    public static final boolean ENABLED = false;
+
     public enum Tool {
         SELECT, PAINT, ERASE, RECOLOR, SMOOTH;
 
