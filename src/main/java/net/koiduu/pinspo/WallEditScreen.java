@@ -60,9 +60,9 @@ public class WallEditScreen extends Screen {
         y += ROW;
         int half = (inner - 2) / 2;
         addRenderableWidget(PinButton.of(x, y, half, 20, Component.translatable("option.pinspo.wall_out"),
-                () -> WallPhotos.nudge(0, 0, step() / 4.0D)));
+                () -> WallPhotos.nudge(0, 0, step())));
         addRenderableWidget(PinButton.of(x + half + 2, y, half, 20, Component.translatable("option.pinspo.wall_in"),
-                () -> WallPhotos.nudge(0, 0, -step() / 4.0D)));
+                () -> WallPhotos.nudge(0, 0, -step())));
         y += ROW;
         addRenderableWidget(PinButton.of(x, y, inner, 20, Component.translatable("option.pinspo.wall_rotate"),
                 WallPhotos::rotate));
@@ -109,6 +109,8 @@ public class WallEditScreen extends Screen {
             case InputConstants.KEY_DOWN -> WallPhotos.nudge(0, -step, 0);
             case InputConstants.KEY_LEFT -> WallPhotos.nudge(-step, 0, 0);
             case InputConstants.KEY_RIGHT -> WallPhotos.nudge(step, 0, 0);
+            case InputConstants.KEY_PAGEUP -> WallPhotos.nudge(0, 0, step);
+            case InputConstants.KEY_PAGEDOWN -> WallPhotos.nudge(0, 0, -step);
             case InputConstants.KEY_R -> WallPhotos.rotate();
             default -> {
                 return super.keyPressed(event);
@@ -120,6 +122,10 @@ public class WallEditScreen extends Screen {
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
         if (mouseX > PANEL_WIDTH + 8 && WallPhotos.mine() != null) {
+            if (net.minecraft.client.Minecraft.getInstance().hasControlDown()) {
+                WallPhotos.nudge(0, 0, Math.signum(verticalAmount) * step());
+                return true;
+            }
             float size = WallPhotos.mine().size;
             WallPhotos.setSize(size * (verticalAmount > 0 ? 1.1F : 1.0F / 1.1F));
             rebuild();
