@@ -1,0 +1,13 @@
+{
+  "name": "pinspo-site",
+  "private": true,
+  "description": "Builds docs/js/hero.js (the 3D skin hero) for the GitHub Pages site.",
+  "scripts": {
+    "build": "esbuild hero.js --bundle --minify --format=esm --target=es2020 --outfile=../docs/js/hero.js"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0",
+    "skinview3d": "3.4.2",
+    "three": "0.156.1"
+  }
+}
