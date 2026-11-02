@@ -21,8 +21,9 @@
     <a href="#install">Install</a>
     <a href="#keys">Keys</a>
     <a href="#faq">FAQ</a>
+    <a data-discord href="">Discord</a>
   </nav>
-  <a class="btn dark small" href="https://github.com/Koiduu/PinterestMod/releases/latest">Download <span aria-hidden="true">↗</span></a>
+  <a class="btn dark small" data-download href="https://github.com/Koiduu/PinterestMod/releases/latest">Download <span aria-hidden="true">↗</span></a>
 </header>
 
 <main id="top">
@@ -30,8 +31,8 @@
     <h1>Your references,<br><em>right in the build.</em></h1>
     <p class="lede">PinSpo brings your inspiration into Minecraft: search for images, pin them on screen or on a wall, and watch every side of your build at once.</p>
     <div class="cta">
-      <a class="btn dark" href="https://github.com/Koiduu/PinterestMod/releases/latest">Download for 26.3 <span aria-hidden="true">→</span></a>
-      <a class="btn line" href="#features"><span class="play" aria-hidden="true"></span>See what it does</a>
+      <a class="btn dark" data-download href="https://github.com/Koiduu/PinterestMod/releases/latest">Download for 26.3 <span aria-hidden="true">→</span></a>
+      <a class="btn line" href="#video"><span class="play" aria-hidden="true"></span>Watch how it works</a>
     </div>
 
     <div id="stage" class="stage" data-model="default">
@@ -62,7 +63,7 @@
       <img src="img/koi.png" alt="" width="30" height="30">
     </div>
 
-    <p class="corner left"><span class="rule"></span>Free and open source.<br>Fabric · Minecraft 26.3</p>
+    <p class="corner left"><span class="rule"></span>Free, and only on your side.<br>Fabric · Minecraft 26.3</p>
     <p class="corner right"><span class="star" aria-hidden="true">✦</span><span class="rule"></span>Less alt-tab.<br>More building.</p>
   </section>
 
@@ -70,50 +71,66 @@
     <p>Before PinSpo, checking two sides of a build meant a second account. Now it's one keypress.</p>
   </section>
 
+  <section id="video" class="video-sec">
+    <div class="video" data-youtube="">
+      <div class="video-empty">
+        <span class="play big" aria-hidden="true"></span>
+        <p>The how-to video is on its way.</p>
+      </div>
+    </div>
+  </section>
+
   <section id="features" class="features">
     <h2>What it does</h2>
-    <div class="grid">
-      <article>
+    <div class="rows">
+      <article class="row">
         <span class="num">01</span>
         <h3>Search in-game</h3>
         <p>Press <kbd>M</kbd>, type a theme, and pick an image from the grid. There's no browser and no login.</p>
       </article>
-      <article>
+      <article class="row">
         <span class="num">02</span>
         <h3>Pin it to your screen</h3>
         <p>Your reference stays in a corner while you build. You can change its size, opacity and position, and it's still there after a restart.</p>
       </article>
-      <article>
+      <article class="row">
         <span class="num">03</span>
         <h3>Colour to block</h3>
         <p>Hover over any pixel of your reference to get its hex code and the closest blocks from your resource pack.</p>
       </article>
-      <article class="wide">
-        <div>
+      <article class="row">
         <span class="num">04</span>
         <h3>Stick it on a wall</h3>
         <p>Look at a wall and press <kbd>B</kbd>. The image goes onto the blocks at true scale, so you can trace it, size it to whole blocks, fade it, rotate it, or push it forward and back.</p>
-        </div>
-        <img src="img/wallphoto.jpg" alt="A reference photo placed on a wall during Build Battle" loading="lazy" width="1400" height="616">
       </article>
-      <article class="half">
+    </div>
+    <figure class="shot">
+      <img src="img/wallphoto.jpg" alt="A reference photo placed on a wall during Build Battle" loading="lazy" width="1400" height="616">
+      <figcaption>A wall photo during Build Battle.</figcaption>
+    </figure>
+    <div class="rows">
+      <article class="row">
         <span class="num">05</span>
         <h3>Live cameras</h3>
         <p>Press <kbd>K</kbd> to plant a camera where you stand. You can have up to four live windows and zoom each one. Drag and resize them however you like.</p>
       </article>
-      <article class="half">
+      <article class="row">
         <span class="num">06</span>
         <h3>Share with friends</h3>
         <p>Add PinSpo friends and send them a reference. One click puts it on their screen too.</p>
       </article>
     </div>
+    <figure class="shot">
+      <img src="img/cameras.jpg" alt="Two live PinSpo camera windows in the top-left of a Minecraft screen" loading="lazy" width="1400" height="946">
+      <figcaption>Two planted cameras, live, while you keep building.</figcaption>
+    </figure>
   </section>
 
   <section id="install" class="install">
     <h2>Install in a minute</h2>
-    <ol>
+    <ol class="steps">
       <li><b>Get Fabric.</b> Install <a href="https://fabricmc.net/use/installer/">Fabric Loader</a> for Minecraft 26.3, then put <a href="https://modrinth.com/mod/fabric-api">Fabric API</a> in your mods folder.</li>
-      <li><b>Download PinSpo.</b> Grab the <code>.jar</code> from the <a href="https://github.com/Koiduu/PinterestMod/releases/latest">latest release</a>.</li>
+      <li><b>Download PinSpo.</b> Grab the <code>.jar</code> from the <a data-download href="https://github.com/Koiduu/PinterestMod/releases/latest">download page</a>.</li>
       <li><b>Drop it in.</b> Press <kbd>Win</kbd>+<kbd>R</kbd>, type <code>%appdata%\.minecraft\mods</code>, and put the jar there. If you have an old PinSpo jar, delete it.</li>
       <li><b>Play.</b> Launch the Fabric profile, join a world and press <kbd>M</kbd>.</li>
     </ol>
@@ -154,9 +171,10 @@
 
 <footer>
   <div><img src="img/koi.png" alt="" width="22" height="22"> PinSpo by Koidu</div>
-  <div class="fine">Unofficial. Not affiliated with Pinterest, Mojang or Microsoft. <a href="https://github.com/Koiduu/PinterestMod">Source on GitHub</a> · MIT</div>
+  <div class="fine"><a data-discord href="">Join the Discord</a> Unofficial. Not affiliated with Pinterest, Mojang or Microsoft.</div>
 </footer>
 
 <script type="module" src="js/hero.js"></script>
+<script type="module" src="js/site.js"></script>
 </body>
 </html>
