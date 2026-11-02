@@ -135,6 +135,8 @@
   "key.pinspo.wall": "Wall photo: place / move (sneak to edit)",
   "key.pinspo.camera": "Camera point: plant (sneak to arrange)",
   "tab.pinspo.build": "Build",
+  "tab.pinspo.tools": "Tools",
+  "key.pinspo.build": "Build mode (Shift: build tools)",
   "screen.pinspo.build": "Build tools",
   "screen.pinspo.section.wall": "Wall photo",
   "screen.pinspo.section.cameras": "Camera points",

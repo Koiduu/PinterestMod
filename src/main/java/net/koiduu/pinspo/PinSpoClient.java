@@ -10,6 +10,8 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.VanillaHudElements;
 import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents;
+import net.koiduu.pinspo.build.BuildTools;
+import net.koiduu.pinspo.build.BuildToolsScreen;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
@@ -41,6 +43,13 @@ public class PinSpoClient implements ClientModInitializer {
     );
 
     /** Plants a live camera where the player is looking; sneak to arrange the camera windows instead. */
+    public static final KeyMapping BUILD_KEY = new KeyMapping(
+            "key.pinspo.build",
+            InputConstants.Type.KEYBOARD,
+            InputConstants.KEY_N,
+            CATEGORY
+    );
+
     public static final KeyMapping CAMERA_KEY = new KeyMapping(
             "key.pinspo.camera",
             InputConstants.Type.KEYBOARD,
@@ -53,20 +62,25 @@ public class PinSpoClient implements ClientModInitializer {
         KeyMappingHelper.registerKeyMapping(OPEN_KEY);
         KeyMappingHelper.registerKeyMapping(WALL_KEY);
         KeyMappingHelper.registerKeyMapping(CAMERA_KEY);
+        KeyMappingHelper.registerKeyMapping(BUILD_KEY);
 
         LevelRenderEvents.AFTER_TRANSLUCENT_TERRAIN.register(WallPhotos::render);
+        LevelRenderEvents.AFTER_TRANSLUCENT_TERRAIN.register(BuildTools::render);
 
         HudElementRegistry.attachElementAfter(
                 VanillaHudElements.MISC_OVERLAYS,
                 Identifier.fromNamespaceAndPath(MOD_ID, "pinned_image"),
                 (guiGraphics, deltaTracker) -> {
                     CameraPoints.render(guiGraphics);
+                    BuildTools.renderHud(guiGraphics);
                     PinnedImage.render(guiGraphics);
                     PinNotifications.render(guiGraphics, guiGraphics.guiWidth());
                 }
         );
 
+        ClientTickEvents.START_CLIENT_TICK.register(BuildTools::onStartTick);
         ClientTickEvents.END_CLIENT_TICK.register(PinSpoClient::onEndTick);
+        ClientTickEvents.END_CLIENT_TICK.register(BuildTools::onEndTick);
         PinnedImage.restore();
 
         // Hypixel announces themes as system messages, but relayed player chat arrives on CHAT. Both are
@@ -88,6 +102,7 @@ public class PinSpoClient implements ClientModInitializer {
             BuildBattleMode.reset();
             WallPhotos.onDisconnect();
             CameraRenderer.releaseAll();
+            BuildTools.onDisconnect();
         });
         ClientLifecycleEvents.CLIENT_STOPPING.register(client -> PinnedImage.clear());
     }
@@ -118,6 +133,16 @@ public class PinSpoClient implements ClientModInitializer {
                 client.setScreenAndShow(new CameraLayoutScreen(null));
             } else {
                 CameraPoints.plant(client);
+            }
+        }
+        while (BUILD_KEY.consumeClick()) {
+            if (client.gui.screen() != null) {
+                continue;
+            }
+            if (sneaking) {
+                client.setScreenAndShow(new BuildToolsScreen(null));
+            } else {
+                BuildTools.toggle();
             }
         }
         while (OPEN_KEY.consumeClick()) {
