@@ -61,6 +61,26 @@ function swapImage(img) {
   input.click();
 }
 
+// The 3D hero isn't a normal <img>: its card photos live in data-shot1..3 on #stage.
+function swapHeroShot(index, thumb) {
+  const stage = document.getElementById("stage");
+  if (!stage) return;
+  const input = Object.assign(document.createElement("input"), { type: "file", accept: "image/*" });
+  input.onchange = async () => {
+    const file = input.files[0];
+    if (!file) return;
+    const { dataUrl, ext } = await shrink(file);
+    const path = `img/hero-card${index + 1}-${Date.now().toString(36)}.${ext}`;
+    newImages.set(path, dataUrl);
+    stage.dataset[`shot${index + 1}`] = path;
+    thumb.src = dataUrl;
+    window.dispatchEvent(new CustomEvent("pinspo:hero-shot", { detail: { index, src: dataUrl } }));
+    markDirty();
+    status(`Card ${index + 1} swapped. Publish to make it live.`);
+  };
+  input.click();
+}
+
 // Big photos are scaled to 1600px wide so the page stays fast.
 async function shrink(file) {
   const bitmap = await createImageBitmap(file);
@@ -114,11 +134,20 @@ function buildBar() {
   const el = ui("div", "pe-bar");
   el.innerHTML = `
     <span class="pe-title">Editing <i>· click text to type, click a photo to swap it</i></span>
+    <button data-act="hero">Hero pictures</button>
     <button data-act="links">Links</button>
     <button data-act="setup">GitHub</button>
     <button data-act="download">Download</button>
     <button data-act="publish" class="pe-main">Publish</button>
     <a href="${location.pathname}" class="pe-exit">Exit</a>
+    <div class="pe-panel" data-panel="hero" hidden>
+      <p>The photos on the floating cards around Steve. Click one to swap it.</p>
+      <div class="pe-shots">
+        <button data-shot="0"><img alt=""><span>Card 1</span></button>
+        <button data-shot="1"><img alt=""><span>Card 2</span></button>
+        <button data-shot="2"><img alt=""><span>Card 3</span></button>
+      </div>
+    </div>
     <div class="pe-panel" data-panel="links" hidden>
       <label>Download link <input name="download" placeholder="https://…"></label>
       <label>Discord invite <input name="discord" placeholder="https://discord.gg/…"></label>
@@ -140,6 +169,12 @@ function buildBar() {
   const panel = (n) => el.querySelector(`[data-panel=${n}]`);
   const toggle = (n) => el.querySelectorAll(".pe-panel").forEach((p) => p.hidden = p.dataset.panel !== n || !p.hidden);
 
+  const stage = document.getElementById("stage");
+  const shotDefaults = ["img/cameras.jpg", "img/wallphoto.jpg", "img/cameras.jpg"];
+  el.querySelectorAll("[data-shot] img").forEach((img, i) => {
+    img.src = stage?.dataset[`shot${i + 1}`] || shotDefaults[i];
+  });
+
   field("download").value = document.querySelector("[data-download]")?.getAttribute("href") || "";
   field("discord").value = document.querySelector("[data-discord]")?.getAttribute("href") || "";
   field("youtube").value = document.querySelector(".video")?.dataset.youtube || "";
@@ -150,7 +185,9 @@ function buildBar() {
 
   el.addEventListener("click", async (e) => {
     const act = e.target.closest("[data-act]")?.dataset.act;
-    if (act === "links" || act === "setup") toggle(act);
+    if (act === "links" || act === "setup" || act === "hero") toggle(act);
+    const shot = e.target.closest("[data-shot]");
+    if (shot) swapHeroShot(Number(shot.dataset.shot), shot.querySelector("img"));
     if (act === "apply-links") {
       document.querySelectorAll("[data-download]").forEach((a) => a.setAttribute("href", field("download").value.trim()));
       document.querySelectorAll("[data-discord]").forEach((a) => a.setAttribute("href", field("discord").value.trim()));
@@ -285,6 +322,11 @@ function injectStyle() {
   .pe-panel { position: absolute; bottom: 58px; right: 0; width: 340px; padding: 16px; border-radius: 16px;
     background: #141416; display: grid; gap: 10px; white-space: normal; }
   .pe-panel[hidden] { display: none; }
+  .pe-shots { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .pe-shots button { display: grid; gap: 6px; padding: 6px; background: #2a2a2e; border: 1px solid #3a3a40;
+    border-radius: 10px; color: #a3a3aa; font: inherit; font-size: 11.5px; cursor: pointer; }
+  .pe-shots button:hover { border-color: #ff1f42; color: #fff; }
+  .pe-shots img { width: 100%; aspect-ratio: 16 / 10; object-fit: cover; border-radius: 6px; filter: grayscale(1); }
   .pe-panel p { margin: 0; color: #a3a3aa; font-size: 12.5px; line-height: 1.5; }
   .pe-panel label { display: grid; gap: 4px; color: #a3a3aa; font-size: 12px; }
   .pe-panel input { font: inherit; color: #fff; background: #2a2a2e; border: 1px solid #3a3a40;

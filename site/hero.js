@@ -81,8 +81,27 @@ function labelPanel(title, line, icon) {
   return c;
 }
 
+/** The three photo cards. The site editor can swap any of them (data-shot1..3 on #stage). */
+const SHOTS = [
+  { src: "img/cameras.jpg", crop: [0, 0, 760, 475] },
+  { src: "img/wallphoto.jpg", crop: [300, 40, 760, 475] },
+  { src: "img/cameras.jpg", crop: [640, 420, 760, 475] },
+].map((d, i) => {
+  const src = stage.dataset[`shot${i + 1}`];
+  return src && src !== d.src ? { src, crop: null } : d;
+});
+
+/** Centre crop with the card's aspect, for pictures swapped in from the editor. */
+function coverCrop(img) {
+  const aspect = PANEL_W / PANEL_H;
+  const sw = Math.min(img.width, img.height * aspect);
+  const sh = sw / aspect;
+  return [(img.width - sw) / 2, (img.height - sh) / 2, sw, sh];
+}
+
 /** A crop of a real in-game screenshot, framed like a PinSpo window. */
-function shotPanel(img, sx, sy, sw, sh) {
+function shotPanel(img, crop) {
+  const [sx, sy, sw, sh] = crop || coverCrop(img);
   const c = document.createElement("canvas");
   c.width = PANEL_W;
   c.height = PANEL_H;
@@ -143,10 +162,9 @@ function curvedPanel(texCanvas, radius, angle, y, width) {
 }
 
 async function main() {
-  const [skinImg, cams, wall] = await Promise.all([
+  const [skinImg, ...shotImgs] = await Promise.all([
     loadImage("img/skin.png"),
-    loadImage("img/cameras.jpg"),
-    loadImage("img/wallphoto.jpg"),
+    ...SHOTS.map((s) => loadImage(s.src)),
     document.fonts.ready,
   ]);
 
@@ -195,13 +213,28 @@ async function main() {
   const R = 14;
   const panels = [
     curvedPanel(labelPanel("Search", "Find refs without alt-tab.", "red"), R, 0.0, 0.6, 10),
-    curvedPanel(shotPanel(cams, 0, 0, 760, 475), R, 1.05, -1.6, 9.5),
+    curvedPanel(shotPanel(shotImgs[0], SHOTS[0].crop), R, 1.05, -1.6, 9.5),
     curvedPanel(labelPanel("Cameras", "Every side, one account.", "dark"), R, 2.1, 1.2, 10),
-    curvedPanel(shotPanel(wall, 300, 40, 760, 475), R, 3.15, -1.0, 9.5),
+    curvedPanel(shotPanel(shotImgs[1], SHOTS[1].crop), R, 3.15, -1.0, 9.5),
     curvedPanel(labelPanel("Wall photo", "Trace it at true scale.", "dark"), R, 4.2, 1.4, 10),
-    curvedPanel(shotPanel(cams, 640, 420, 760, 475), R, 5.25, -1.2, 9),
+    curvedPanel(shotPanel(shotImgs[2], SHOTS[2].crop), R, 5.25, -1.2, 9),
   ];
   panels.forEach((p) => ring.add(p));
+
+  // Live preview while editing: the editor sends the new picture, we repaint that card.
+  const shotCards = [panels[1], panels[3], panels[5]];
+  addEventListener("pinspo:hero-shot", async (e) => {
+    const { index, src } = e.detail;
+    const front = shotCards[index]?.children[1];
+    if (!front) return;
+    const tex = new THREE.CanvasTexture(shotPanel(await loadImage(src), null));
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.anisotropy = 8;
+    front.material.map.dispose();
+    front.material.map = tex;
+    front.material.needsUpdate = true;
+    if (reduceMotion) renderer.render(scene, camera);
+  });
   scene.add(ring);
 
   function resize() {
