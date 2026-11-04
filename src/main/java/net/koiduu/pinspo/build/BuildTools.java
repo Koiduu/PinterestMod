@@ -681,6 +681,18 @@ public final class BuildTools {
 
     // ---- applying edits ----
 
+    private static String lastMessage = "";
+
+    /** Runs an edit from outside the build tools (the shade shifter) and returns what it reported. */
+    public static String applyEdit(String label, Map<BlockPos, BlockState> changes) {
+        apply(label, changes);
+        return lastMessage;
+    }
+
+    public static String lastMessage() {
+        return lastMessage;
+    }
+
     private static void apply(String label, Map<BlockPos, BlockState> changes) {
         Minecraft client = Minecraft.getInstance();
         if (client.level == null || changes.isEmpty()) {
@@ -920,6 +932,7 @@ public final class BuildTools {
     }
 
     static void tell(String message) {
+        lastMessage = message;
         Minecraft client = Minecraft.getInstance();
         if (client.player != null) {
             client.player.sendOverlayMessage(Component.literal(message));

@@ -32,6 +32,9 @@ public interface CameraAccessor {
     @Accessor("depthFar")
     float pinspo$depthFar();
 
+    @Accessor("depthFar")
+    void pinspo$setDepthFar(float depthFar);
+
     @Invoker("setupPerspective")
     void pinspo$setupPerspective(float near, float far, float fov, float width, float height);
 

@@ -59,6 +59,21 @@ public final class CameraRenderer {
         return busy;
     }
 
+    /** Saves what a camera window shows to the screenshots folder, at the game window's resolution. */
+    public static boolean screenshot(CameraPoints.Point point) {
+        Minecraft client = Minecraft.getInstance();
+        TextureTarget target = TARGETS.get(point);
+        if (target == null || !READY.contains(point)) {
+            return false;
+        }
+        String name = "pinspo-" + point.name.toLowerCase(java.util.Locale.ROOT).replaceAll("[^a-z0-9]+", "-")
+                + "-" + new java.text.SimpleDateFormat("yyyy-MM-dd_HH.mm.ss").format(new java.util.Date()) + ".png";
+        PinSpoClient.LOGGER.info("Camera screenshot: {} -> screenshots/{}", point.name, name);
+        net.minecraft.client.Screenshot.grab(client.gameDirectory, name, target, 1,
+                message -> client.execute(() -> client.gui.hud.getChat().addClientSystemMessage(message)));
+        return true;
+    }
+
     public static void afterLevel(GameRenderer gameRenderer, DeltaTracker deltaTracker) {
         if (busy || broken) {
             return;
@@ -111,8 +126,10 @@ public final class CameraRenderer {
         double prevRotY = extractorAccess.pinspo$prevCamRotY();
         List<SectionRenderDispatcher.RenderSection> playerSections = new ArrayList<>(client.levelRenderer.visibleSections());
         List<SectionRenderDispatcher.RenderSection> playerNearby = new ArrayList<>(client.levelRenderer.nearbyVisibleSections());
+        float depthFar = cameraAccess.pinspo$depthFar();
         busy = true;
         try {
+            cameraAccess.pinspo$setDepthFar(depthFar * net.koiduu.pinspo.util.Utilities.get().cameraRange);
             cameraAccess.pinspo$setPosition(point.position());
             cameraAccess.pinspo$setRotation(point.yaw, point.pitch);
             // Detached, so the player's own body shows up in the view like any other entity.
@@ -160,6 +177,7 @@ public final class CameraRenderer {
             cameraAccess.pinspo$setPosition(position);
             cameraAccess.pinspo$setRotation(yRot, xRot);
             cameraAccess.pinspo$setDetached(detached);
+            cameraAccess.pinspo$setDepthFar(depthFar);
             setFov(cameraAccess, fov);
             refreshFrustum(camera, cameraAccess);
             try {
