@@ -31,6 +31,14 @@ public final class BlockPalette {
             "infested_", "waxed_", "petrified", "test_block", "test_instance", "reinforced_deepslate"
     };
 
+    /** Blocks with a face texture or a job (ores, machines, logs) that would look odd swapped into a wall. */
+    private static final String[] NOT_FOR_SHADING = {
+            "_ore", "observer", "dispenser", "dropper", "furnace", "smoker", "crafter", "bedrock", "_log", "_wood",
+            "chiseled_", "crafting_table", "loom", "barrel", "bookshelf", "jukebox", "note_block", "target",
+            "beehive", "bee_nest", "sculk", "respawn_anchor", "lodestone", "_table", "pumpkin", "melon",
+            "mushroom_block", "redstone_lamp", "tnt", "magma", "ancient_debris", "budding_", "suspicious_"
+    };
+
     public record Entry(Block block, int rgb, float l, float a, float b) {
     }
 
@@ -63,6 +71,73 @@ public final class BlockPalette {
             entries = built;
             PinSpoClient.LOGGER.info("Block colour palette ready: {} blocks", built.size());
         });
+    }
+
+    /**
+     * A light-to-dark run of blocks that look like {@code source}: for each step of lightness it takes the block
+     * closest to the source's colour at that lightness. The colour fades toward grey away from the source, so a
+     * pale block still ends in coal at one end and snow at the other. Sorted darkest first; includes the source.
+     */
+    public static List<Entry> shadeRamp(Block source, int steps) {
+        List<Entry> palette = entries;
+        if (palette == null) {
+            prepare();
+            return List.of();
+        }
+        Entry origin = null;
+        float minL = 1.0F;
+        float maxL = 0.0F;
+        for (Entry entry : palette) {
+            if (entry.block() == source) {
+                origin = entry;
+            }
+            minL = Math.min(minL, entry.l());
+            maxL = Math.max(maxL, entry.l());
+        }
+        if (origin == null) {
+            return List.of();
+        }
+        Entry src = origin;
+        palette = palette.stream().filter(entry -> entry == src || shadeable(entry.block())).toList();
+        float span = Math.max(1.0E-3F, maxL - minL);
+        List<Entry> ramp = new ArrayList<>();
+        for (int i = 0; i < steps; i++) {
+            float l = minL + span * i / (steps - 1);
+            float away = Math.abs(l - origin.l()) / span;
+            float keep = 1.0F - Math.min(1.0F, away * 1.5F) * 0.7F;
+            float a = origin.a() * keep;
+            float b = origin.b() * keep;
+            Entry best = null;
+            double bestDistance = Double.MAX_VALUE;
+            for (Entry entry : palette) {
+                double dl = entry.l() - l;
+                double da = entry.a() - a;
+                double db = entry.b() - b;
+                double distance = dl * dl + 4.0 * (da * da + db * db);
+                if (distance < bestDistance) {
+                    bestDistance = distance;
+                    best = entry;
+                }
+            }
+            if (best != null && !ramp.contains(best)) {
+                ramp.add(best);
+            }
+        }
+        if (!ramp.contains(origin)) {
+            ramp.add(origin);
+        }
+        ramp.sort(Comparator.comparingDouble(Entry::l));
+        return ramp;
+    }
+
+    private static boolean shadeable(Block block) {
+        String path = BuiltInRegistries.BLOCK.getKey(block).getPath();
+        for (String part : NOT_FOR_SHADING) {
+            if (path.contains(part)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     public static List<Match> nearest(int rgb, int count) {

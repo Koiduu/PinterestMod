@@ -129,6 +129,88 @@ public final class CameraPoints {
                 PinSpoClient.CAMERA_KEY.getTranslatedKeyMessage()));
     }
 
+    private static final java.util.Set<Point> TOGGLED_OFF = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
+    private static int teleportCursor;
+
+    /** One key for every camera here: hides them all, then brings back the ones it hid. */
+    public static void toggleAll() {
+        List<Point> here = here();
+        if (here.isEmpty()) {
+            tell(Component.translatable("message.pinspo.camera_none",
+                    PinSpoClient.CAMERA_KEY.getTranslatedKeyMessage()));
+            return;
+        }
+        List<Point> showing = here.stream().filter(point -> point.visible).toList();
+        if (!showing.isEmpty()) {
+            TOGGLED_OFF.clear();
+            for (Point point : showing) {
+                point.visible = false;
+                CameraRenderer.release(point);
+                TOGGLED_OFF.add(point);
+            }
+            tell(Component.translatable("message.pinspo.cameras_off", showing.size()));
+        } else {
+            List<Point> back = here.stream().filter(TOGGLED_OFF::contains).toList();
+            for (Point point : back.isEmpty() ? here : back) {
+                point.visible = true;
+            }
+            TOGGLED_OFF.clear();
+            tell(Component.translatable("message.pinspo.cameras_on"));
+        }
+        save();
+    }
+
+    /** True when the server lets this player run /tp (singleplayer with cheats, or op). */
+    public static boolean canTeleport(Minecraft client) {
+        return client.getConnection() != null
+                && client.getConnection().getCommands().getRoot().getChild("tp") != null;
+    }
+
+    /** Puts the player exactly where the camera is, facing the way it faces. */
+    public static void teleport(Minecraft client, Point point) {
+        if (client.player == null || client.getConnection() == null) {
+            return;
+        }
+        if (!canTeleport(client)) {
+            tell(Component.translatable("message.pinspo.camera_tp_denied"));
+            return;
+        }
+        double feet = point.y - client.player.getEyeHeight();
+        client.getConnection().sendCommand(String.format(java.util.Locale.ROOT, "tp @s %.3f %.3f %.3f %.1f %.1f",
+                point.x, feet, point.z, point.yaw, point.pitch));
+        PinSpoClient.LOGGER.info("Teleported to {}", point.name);
+        tell(Component.translatable("message.pinspo.camera_tp", point.name));
+    }
+
+    /** Each press goes to the next camera in this world. */
+    public static void teleportNext(Minecraft client) {
+        List<Point> here = here();
+        if (here.isEmpty()) {
+            tell(Component.translatable("message.pinspo.camera_none",
+                    PinSpoClient.CAMERA_KEY.getTranslatedKeyMessage()));
+            return;
+        }
+        teleport(client, here.get(Math.floorMod(teleportCursor++, here.size())));
+    }
+
+    /** Screenshots every camera window showing in this world. */
+    public static void screenshotAll() {
+        List<Point> showing = visibleHere();
+        if (showing.isEmpty()) {
+            tell(Component.translatable("message.pinspo.camera_shot_none"));
+            return;
+        }
+        int taken = 0;
+        for (Point point : showing) {
+            if (CameraRenderer.screenshot(point)) {
+                taken++;
+            }
+        }
+        if (taken == 0) {
+            tell(Component.translatable("message.pinspo.camera_shot_wait"));
+        }
+    }
+
     public static void remove(Point point) {
         all().remove(point);
         CameraRenderer.release(point);
