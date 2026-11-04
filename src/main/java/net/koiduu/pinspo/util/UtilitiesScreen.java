@@ -309,7 +309,7 @@ public class UtilitiesScreen extends PinTabScreen {
                 int y = top + HEADER;
                 for (CameraPoints.Point point : cameras) {
                     guiGraphics.fill(rightX, y + 8, rightX + 4, y + 12, point.visible ? PinTheme.ACCENT : PinTheme.BORDER);
-                    guiGraphics.text(font, font.plainSubstrByWidth(point.name, columnWidth - 140), rightX + 8, y + 6,
+                    guiGraphics.text(font, font.plainSubstrByWidth(point.name, columnWidth - 8 - 128 - 4), rightX + 8, y + 6,
                             point.visible ? PinTheme.TEXT_SOFT : COLOR_MUTED, false);
                     y += ROW;
                 }

@@ -91,7 +91,7 @@ public class PinSpoClient implements ClientModInitializer {
     public static final KeyMapping CAMERA_SHOT_KEY = new KeyMapping(
             "key.pinspo.camera_shot",
             InputConstants.Type.KEYBOARD,
-            InputConstants.KEY_O,
+            InputConstants.KEY_I,
             CATEGORY
     );
 
@@ -99,7 +99,7 @@ public class PinSpoClient implements ClientModInitializer {
     public static final KeyMapping HOLOGRAM_KEY = new KeyMapping(
             "key.pinspo.hologram",
             InputConstants.Type.KEYBOARD,
-            InputConstants.KEY_G,
+            InputConstants.KEY_R,
             CATEGORY
     );
 

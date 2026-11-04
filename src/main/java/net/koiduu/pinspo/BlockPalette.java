@@ -31,6 +31,14 @@ public final class BlockPalette {
             "infested_", "waxed_", "petrified", "test_block", "test_instance", "reinforced_deepslate"
     };
 
+    /** Blocks with a face texture or a job (ores, machines, logs) that would look odd swapped into a wall. */
+    private static final String[] NOT_FOR_SHADING = {
+            "_ore", "observer", "dispenser", "dropper", "furnace", "smoker", "crafter", "bedrock", "_log", "_wood",
+            "chiseled_", "crafting_table", "loom", "barrel", "bookshelf", "jukebox", "note_block", "target",
+            "beehive", "bee_nest", "sculk", "respawn_anchor", "lodestone", "_table", "pumpkin", "melon",
+            "mushroom_block", "redstone_lamp", "tnt", "magma", "ancient_debris", "budding_", "suspicious_"
+    };
+
     public record Entry(Block block, int rgb, float l, float a, float b) {
     }
 
@@ -89,6 +97,8 @@ public final class BlockPalette {
         if (origin == null) {
             return List.of();
         }
+        Entry src = origin;
+        palette = palette.stream().filter(entry -> entry == src || shadeable(entry.block())).toList();
         float span = Math.max(1.0E-3F, maxL - minL);
         List<Entry> ramp = new ArrayList<>();
         for (int i = 0; i < steps; i++) {
@@ -118,6 +128,16 @@ public final class BlockPalette {
         }
         ramp.sort(Comparator.comparingDouble(Entry::l));
         return ramp;
+    }
+
+    private static boolean shadeable(Block block) {
+        String path = BuiltInRegistries.BLOCK.getKey(block).getPath();
+        for (String part : NOT_FOR_SHADING) {
+            if (path.contains(part)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     public static List<Match> nearest(int rgb, int count) {
