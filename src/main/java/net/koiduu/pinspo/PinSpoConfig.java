@@ -28,11 +28,23 @@ public class PinSpoConfig {
     /** Vertical offset from the chosen corner, as a fraction of screen height. */
     public float offsetY = 0.02F;
     /** Overlay width as a fraction of screen width; height follows the image aspect ratio. */
-    public float scale = 0.25F;
+    public float scale = 0.3F;
     public float opacity = 0.85F;
     public boolean preferOriginalResolution = false;
-    /** Minutes of the browser being unused before it is disposed; 0 disables idle disposal. */
-    public int idleDisposeMinutes = 5;
+    /** Currently pinned image URL; re-pinned from the on-disk cache on startup. */
+    public String pinnedUrl = "";
+    /** Who the pinned image belongs to, shown under the overlay. */
+    public String pinnedCredit = "";
+    /** Draw the image owner's name under the overlay and under grid thumbnails. */
+    public boolean showCredit = true;
+    /** Blurred halo behind the overlay, so the reference reads against busy terrain. */
+    public boolean blurBackdrop = false;
+    /** Order search results by what the player has picked and saved before. */
+    public boolean personalise = true;
+    /** Watch chat for Hypixel Build Battle themes and react to them automatically. */
+    public boolean buildBattleMode = false;
+    /** In Build Battle mode, pin a random matching image instead of opening the search screen. */
+    public boolean buildBattleRandomPin = false;
 
     public static PinSpoConfig get() {
         if (instance == null) {
@@ -72,11 +84,18 @@ public class PinSpoConfig {
         if (corner == null) {
             corner = Corner.TOP_RIGHT;
         }
+        if (pinnedUrl == null) {
+            pinnedUrl = "";
+        }
+        pinnedCredit = PinSecurity.cleanName(pinnedCredit);
         offsetX = clamp01(offsetX);
         offsetY = clamp01(offsetY);
         scale = Math.clamp(scale, 0.05F, 1.0F);
         opacity = Math.clamp(opacity, 0.05F, 1.0F);
-        idleDisposeMinutes = Math.clamp(idleDisposeMinutes, 0, 60);
+        if (!pinnedUrl.isEmpty() && !PinSecurity.isPinnableUrl(pinnedUrl)) {
+            // A hand-edited config must not be able to point the overlay at an arbitrary address.
+            pinnedUrl = "";
+        }
     }
 
     private static float clamp01(float value) {
